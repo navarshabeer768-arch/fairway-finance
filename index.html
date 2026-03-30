@@ -166,6 +166,7 @@ tr:hover td{background:#f8f9ff;}
     <div class="nav-item" onclick="showPage('assets')"><span class="icon">🏗️</span> Fixed Assets</div>
     <div class="nav-item" onclick="showPage('liabilities')"><span class="icon">📑</span> Liabilities</div>
     <div class="nav-section">Operations</div>
+    <div class="nav-item" onclick="showPage('products')"><span class="icon">📦</span> Products</div>
     <div class="nav-item" onclick="showPage('purchases')"><span class="icon">🛒</span> Purchases from Alaa</div>
     <div class="nav-item" onclick="showPage('importcosts')"><span class="icon">🚢</span> Import & Extra Costs</div>
     <div class="nav-item" onclick="showPage('cogs')"><span class="icon">📊</span> Cost Analysis</div>
@@ -410,6 +411,34 @@ tr:hover td{background:#f8f9ff;}
       <div class="card">
         <div class="card-header"><div class="card-title">Customer Aging Report</div></div>
         <div class="card-body"><table><thead><tr><th>Customer</th><th>Total Due</th><th>0-30 days</th><th>31-60 days</th><th>61-90 days</th><th>90+ days</th><th>Status</th></tr></thead><tbody id="aging-list"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- PRODUCTS -->
+    <div class="page" id="page-products">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div class="tabs">
+          <div class="tab active" onclick="switchProductTab('list')">📦 All Products</div>
+          <div class="tab" onclick="switchProductTab('stock')">🏭 Warehouse Stock</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openAddProductModal()">+ Add Product</button>
+      </div>
+      <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);">
+        <div class="stat-card navy"><div class="stat-label">📦 Total Products</div><div class="stat-val navy" id="prod-count">0</div></div>
+        <div class="stat-card green"><div class="stat-label">🏭 Total Warehouse Stock</div><div class="stat-val green" id="prod-wh-total">0 boxes</div></div>
+        <div class="stat-card gold"><div class="stat-label">💰 Warehouse Value</div><div class="stat-val gold" id="prod-wh-value">QR 0</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title" id="prod-table-title">Products List</div>
+          <input type="text" class="form-input" id="prod-search" placeholder="🔍 Search..." style="width:200px;" oninput="loadProducts()">
+        </div>
+        <div class="card-body">
+          <table>
+            <thead><tr><th>Product</th><th>Category</th><th>Selling Price</th><th>Cost Price</th><th>Warehouse Stock</th><th>Truck Stock</th><th>Action</th></tr></thead>
+            <tbody id="product-list"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -698,6 +727,37 @@ tr:hover td{background:#f8f9ff;}
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-product">
+  <div class="modal">
+    <div class="modal-title" id="prod-modal-title">Add Product</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Product Name</label><input type="text" class="form-input" id="prod-name" placeholder="e.g. Alaa Popcorn Cheese 30g"></div>
+      <div class="form-group"><label class="form-label">Category</label>
+        <select class="form-select" id="prod-category">
+          <option>Popcorn</option>
+          <option>Chips</option>
+          <option>Snacks</option>
+          <option>Beverages</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Selling Price (QR)</label><input type="number" class="form-input" id="prod-sell-price" placeholder="0.00"></div>
+      <div class="form-group"><label class="form-label">Cost Price (QR)</label><input type="number" class="form-input" id="prod-cost-price" placeholder="0.00"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Unit / Pack Size</label><input type="text" class="form-input" id="prod-unit" placeholder="e.g. 12x30g, 1 Box, 1 Carton"></div>
+      <div class="form-group"><label class="form-label">Barcode (optional)</label><input type="text" class="form-input" id="prod-barcode" placeholder="Barcode number"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:16px;"><label class="form-label">Notes</label><input type="text" class="form-input" id="prod-notes" placeholder="Any notes about product"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-product')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveProduct()">💾 Save Product</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-purchase-order">
   <div class="modal">
     <div class="modal-title">New Purchase from Alaa (Oman)</div>
@@ -705,15 +765,18 @@ tr:hover td{background:#f8f9ff;}
       <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="po-date"></div>
       <div class="form-group"><label class="form-label">Alaa Invoice #</label><input type="text" class="form-input" id="po-inv" placeholder="Alaa invoice number"></div>
     </div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Product Name</label><input type="text" class="form-input" id="po-product" placeholder="e.g. Alaa Popcorn Cheese 12x30g"></div>
-      <div class="form-group"><label class="form-label">Quantity (Boxes/Cartons)</label><input type="number" class="form-input" id="po-qty" placeholder="0"></div>
+    <div class="form-group" style="margin-bottom:16px;">
+      <label class="form-label">Product (from POS) <span style="color:var(--text2);font-weight:400;">— links to warehouse stock</span></label>
+      <select class="form-select" id="po-product-id" onchange="onPOProductSelect()">
+        <option value="">Select product...</option>
+      </select>
     </div>
     <div class="form-row">
+      <div class="form-group"><label class="form-label">Quantity (Boxes/Cartons)</label><input type="number" class="form-input" id="po-qty" placeholder="0" oninput="calcPOTotal()"></div>
       <div class="form-group"><label class="form-label">Unit Price per Box (QR)</label><input type="number" class="form-input" id="po-unit-price" placeholder="0.00" oninput="calcPOTotal()"></div>
-      <div class="form-group"><label class="form-label">Total Amount (QR)</label><input type="number" class="form-input" id="po-total" placeholder="0.00" style="background:#f5f5f5;"></div>
     </div>
     <div class="form-row">
+      <div class="form-group"><label class="form-label">Total Amount (QR)</label><input type="number" class="form-input" id="po-total" placeholder="0.00" style="background:#f5f5f5;" readonly></div>
       <div class="form-group"><label class="form-label">Payment Status</label>
         <select class="form-select" id="po-status">
           <option value="paid">Paid</option>
@@ -721,9 +784,12 @@ tr:hover td{background:#f8f9ff;}
           <option value="partial">Partial</option>
         </select>
       </div>
-      <div class="form-group"><label class="form-label">Notes</label><input type="text" class="form-input" id="po-notes" placeholder="Any notes"></div>
     </div>
-    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-purchase-order')">Cancel</button><button class="btn btn-primary" onclick="savePurchaseOrder()">Save Purchase</button></div>
+    <div class="form-group" style="margin-bottom:16px;"><label class="form-label">Notes</label><input type="text" class="form-input" id="po-notes" placeholder="Any notes"></div>
+    <div style="background:#e8f5e9;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:var(--green);font-weight:700;">
+      ✅ Saving this purchase will automatically add quantity to POS Warehouse stock
+    </div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-purchase-order')">Cancel</button><button class="btn btn-primary" onclick="savePurchaseOrder()">💾 Save & Update Warehouse</button></div>
   </div>
 </div>
 
@@ -914,6 +980,7 @@ function loadCurrentPage(page) {
   else if (page === 'income') loadTransactions();
   else if (page === 'suppliers') loadSuppliers();
   else if (page === 'salaries') loadEmployees();
+  else if (page === 'products') loadProducts();
   else if (page === 'purchases') loadPurchaseOrders();
   else if (page === 'importcosts') loadImportCosts();
   else if (page === 'cogs') loadCOGS();
@@ -933,6 +1000,7 @@ const pageTitles = {
   balance: ['Balance Sheet', 'Assets, liabilities and equity'],
   income: ['Income & Expenses', 'All transactions'],
   purchases: ['Purchases from Alaa', 'Track all purchases from Oman supplier'],
+  products: ['Products', 'Manage your product catalogue'],
   importcosts: ['Import & Extra Costs', 'Customs, warehouse, transport, fuel'],
   cogs: ['Cost Analysis', 'Full cost breakdown per box & profit margin'],
   assets: ['Fixed Assets', 'Vehicles, equipment, furniture & more'],
@@ -1482,6 +1550,145 @@ function loadAging() {
 }
 
 // ═══════════════════════════════════════════
+// PRODUCTS
+// ═══════════════════════════════════════════
+let currentProductTab = 'list';
+
+function switchProductTab(tab) {
+  currentProductTab = tab;
+  document.querySelectorAll('#page-products .tab').forEach((t,i) => t.classList.toggle('active', i===(tab==='list'?0:1)));
+  loadProducts();
+}
+
+function loadProducts() {
+  const products = lsGet('fin_products');
+  const search = (document.getElementById('prod-search')?.value||'').toLowerCase();
+  const filtered = products.filter(p => !search || p.name.toLowerCase().includes(search));
+
+  document.getElementById('prod-count').textContent = products.length;
+
+  // Get warehouse stocks from Supabase posData
+  const whMap = {};
+  const trMap = {};
+  // Try to get from posData
+  if (posData.products) {
+    posData.products.forEach(p => {
+      whMap[p.product_id] = p.warehouse_qty || 0;
+      trMap[p.product_id] = p.truck_qty || 0;
+    });
+  }
+  // Calculate warehouse totals from purchases
+  const purchaseTotals = {};
+  lsGet('fin_purchase_orders').forEach(o => {
+    if (o.product_id) purchaseTotals[o.product_id] = (purchaseTotals[o.product_id]||0) + (o.qty||0);
+  });
+
+  let totalWHBoxes = 0, totalWHValue = 0;
+  products.forEach(p => {
+    const wh = purchaseTotals[p.id] || 0;
+    totalWHBoxes += wh;
+    totalWHValue += wh * (p.cost_price||0);
+  });
+  document.getElementById('prod-wh-total').textContent = totalWHBoxes + ' boxes';
+  document.getElementById('prod-wh-value').textContent = fmt(totalWHValue);
+
+  document.getElementById('product-list').innerHTML = filtered.map(p => {
+    const whStock = purchaseTotals[p.id] || 0;
+    const margin = p.sell_price && p.cost_price ? (((p.sell_price - p.cost_price)/p.sell_price)*100).toFixed(0) : 0;
+    return `<tr>
+      <td>
+        <strong>${p.icon||'📦'} ${p.name}</strong>
+        <div style="font-size:11px;color:var(--text2);">${p.unit||''} ${p.barcode?'· '+p.barcode:''}</div>
+      </td>
+      <td><span class="badge badge-blue">${p.category||'—'}</span></td>
+      <td style="font-weight:700;color:var(--green);">${fmt(p.sell_price||0)}</td>
+      <td>${fmt(p.cost_price||0)} <small style="color:var(--text2);">(${margin}% margin)</small></td>
+      <td style="font-weight:700;color:var(--navy);">${whStock} boxes</td>
+      <td>—</td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="editProduct('${p.id}')">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">✕</button>
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" style="text-align:center;padding:30px;color:#999;">No products yet — click + Add Product</td></tr>';
+}
+
+function openAddProductModal() {
+  document.getElementById('prod-modal-title').textContent = 'Add Product';
+  document.getElementById('prod-name').value = '';
+  document.getElementById('prod-sell-price').value = '';
+  document.getElementById('prod-cost-price').value = '';
+  document.getElementById('prod-unit').value = '';
+  document.getElementById('prod-barcode').value = '';
+  document.getElementById('prod-notes').value = '';
+  document.getElementById('prod-modal-title').dataset.editId = '';
+  openModal('modal-product');
+}
+
+function editProduct(id) {
+  const p = lsGet('fin_products').find(p => p.id === id);
+  if (!p) return;
+  document.getElementById('prod-modal-title').textContent = 'Edit Product';
+  document.getElementById('prod-modal-title').dataset.editId = id;
+  document.getElementById('prod-name').value = p.name;
+  document.getElementById('prod-category').value = p.category||'Popcorn';
+  document.getElementById('prod-sell-price').value = p.sell_price||'';
+  document.getElementById('prod-cost-price').value = p.cost_price||'';
+  document.getElementById('prod-unit').value = p.unit||'';
+  document.getElementById('prod-barcode').value = p.barcode||'';
+  document.getElementById('prod-notes').value = p.notes||'';
+  openModal('modal-product');
+}
+
+async function saveProduct() {
+  const editId = document.getElementById('prod-modal-title').dataset.editId;
+  const p = {
+    id: editId || Date.now().toString(),
+    name: document.getElementById('prod-name').value.trim(),
+    category: document.getElementById('prod-category').value,
+    sell_price: parseFloat(document.getElementById('prod-sell-price').value)||0,
+    cost_price: parseFloat(document.getElementById('prod-cost-price').value)||0,
+    unit: document.getElementById('prod-unit').value,
+    barcode: document.getElementById('prod-barcode').value,
+    notes: document.getElementById('prod-notes').value,
+    icon: '📦'
+  };
+  if (!p.name) { alert('Enter product name'); return; }
+  const all = lsGet('fin_products');
+  if (editId) {
+    const idx = all.findIndex(x => x.id === editId);
+    if (idx >= 0) all[idx] = p;
+  } else {
+    all.unshift(p);
+    // Also sync to POS Supabase products table
+    try {
+      const { data, error } = await sb.from('products').insert({
+        name: p.name, category: p.category,
+        selling_price: p.sell_price, cost_price: p.cost_price,
+        icon: '📦', barcode: p.barcode || null
+      }).select();
+      if (data && data[0]) {
+        p.pos_id = data[0].product_id;
+        all[0] = p;
+        // Also create warehouse_stock entry
+        await sb.from('warehouse_stock').insert({ product_id: data[0].product_id, quantity: 0 });
+        await sb.from('inventory').insert({ product_id: data[0].product_id, quantity: 0 });
+      }
+    } catch(e) { console.error('POS sync error:', e); }
+  }
+  lsSet('fin_products', all);
+  closeModal('modal-product');
+  loadProducts();
+  showToast(`✅ Product ${editId ? 'updated' : 'added'} and synced to POS!`);
+}
+
+function deleteProduct(id) {
+  if (!confirm('Delete this product?')) return;
+  lsSet('fin_products', lsGet('fin_products').filter(p => p.id !== id));
+  loadProducts();
+}
+
+// ═══════════════════════════════════════════
 // PURCHASES FROM ALAA
 // ═══════════════════════════════════════════
 let currentPurchaseTab = 'list';
@@ -1523,10 +1730,20 @@ function loadPurchaseOrders() {
 function openAddPurchaseOrderModal() {
   document.getElementById('po-date').value = today();
   document.getElementById('po-inv').value = '';
-  document.getElementById('po-product').value = '';
   document.getElementById('po-qty').value = '';
   document.getElementById('po-unit-price').value = '';
   document.getElementById('po-total').value = '';
+  document.getElementById('po-notes').value = '';
+  // Populate from Finance products first, fallback to POS products
+  const finProds = lsGet('fin_products');
+  const sel = document.getElementById('po-product-id');
+  if (finProds.length > 0) {
+    sel.innerHTML = '<option value="">Select product...</option>' +
+      finProds.map(p => `<option value="${p.id}" data-price="${p.cost_price||0}" data-posid="${p.pos_id||''}">${p.icon||'📦'} ${p.name}</option>`).join('');
+  } else {
+    sel.innerHTML = '<option value="">Select product...</option>' +
+      posData.products.map(p => `<option value="${p.product_id}" data-price="${p.selling_price||0}">${p.icon||'📦'} ${p.name}</option>`).join('');
+  }
   openModal('modal-purchase-order');
 }
 
@@ -1536,22 +1753,63 @@ function calcPOTotal() {
   document.getElementById('po-total').value = (qty * price).toFixed(2);
 }
 
-function savePurchaseOrder() {
+function onPOProductSelect() {
+  const sel = document.getElementById('po-product-id');
+  const opt = sel.options[sel.selectedIndex];
+  // Auto fill unit price from product selling price if available
+  if (opt && opt.dataset.price) {
+    document.getElementById('po-unit-price').value = opt.dataset.price;
+    calcPOTotal();
+  }
+}
+
+async function savePurchaseOrder() {
+  const productId = document.getElementById('po-product-id').value;
+  const sel = document.getElementById('po-product-id');
+  const productName = sel.options[sel.selectedIndex]?.text || '';
   const qty = parseFloat(document.getElementById('po-qty').value) || 0;
   const unitPrice = parseFloat(document.getElementById('po-unit-price').value) || 0;
+  const total = parseFloat(document.getElementById('po-total').value) || qty * unitPrice;
+  if (!productId) { alert('Please select a product'); return; }
+  if (!qty || !total) { alert('Enter quantity and price'); return; }
   const o = {
     id: Date.now().toString(),
     date: document.getElementById('po-date').value,
     invoice_ref: document.getElementById('po-inv').value,
-    product: document.getElementById('po-product').value,
-    qty, unit_price: unitPrice,
-    total: parseFloat(document.getElementById('po-total').value) || qty * unitPrice,
+    product_id: productId,
+    product: productName,
+    qty, unit_price: unitPrice, total,
     status: document.getElementById('po-status').value,
     notes: document.getElementById('po-notes').value
   };
-  if (!o.product || !o.total) { alert('Fill product and amount'); return; }
+  // Save to finance
   const all = lsGet('fin_purchase_orders'); all.unshift(o); lsSet('fin_purchase_orders', all);
-  closeModal('modal-purchase-order'); loadPurchaseOrders();
+  // ✅ Update POS warehouse stock via Supabase
+  try {
+    const { data: existing } = await sb.from('warehouse_stock').select('*').eq('product_id', productId);
+    if (existing && existing.length > 0) {
+      // Update existing stock
+      const newQty = (existing[0].quantity || 0) + qty;
+      await sb.from('warehouse_stock').update({ quantity: newQty }).eq('product_id', productId);
+    } else {
+      // Insert new warehouse stock record
+      await sb.from('warehouse_stock').insert({ product_id: parseInt(productId), quantity: qty });
+    }
+    showToast(`✅ Purchase saved! +${qty} boxes added to warehouse`);
+  } catch(e) {
+    console.error('Warehouse sync error:', e);
+    showToast('⚠️ Purchase saved but warehouse sync failed');
+  }
+  closeModal('modal-purchase-order');
+  loadPurchaseOrders();
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1a237e;color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;font-weight:700;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.3);';
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
 }
 
 function markPOPaid(id) {
