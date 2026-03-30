@@ -1071,6 +1071,15 @@ function showPage(page) {
 // HELPERS
 // ═══════════════════════════════════════════
 function fmt(n) { return 'QR ' + parseFloat(n || 0).toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmtStock(totalBags, cpb) {
+  cpb = parseInt(cpb) || 1;
+  if (cpb <= 1) return totalBags + ' bags';
+  const boxes = Math.floor(totalBags / cpb);
+  const rem = totalBags % cpb;
+  if (boxes === 0) return `${rem} bag${rem !== 1 ? 's' : ''}`;
+  if (rem === 0) return `${boxes} box${boxes !== 1 ? 'es' : ''}`;
+  return `${boxes} box${boxes !== 1 ? 'es' : ''} + ${rem} bag${rem !== 1 ? 's' : ''}`;
+}
 function today() { return new Date().toISOString().split('T')[0]; }
 function monthStart() { const d = new Date(); d.setDate(1); return d.toISOString().split('T')[0]; }
 function lastMonthRange() {
@@ -1620,17 +1629,19 @@ function loadProducts() {
     totalWHBags += wh;
     totalWHValue += wh * (p.cost_price||0);
   });
-  document.getElementById('prod-wh-total').textContent = totalWHBags + ' bags';
+  const totalWHFmt = (() => {
+    // overall can't show boxes since different products have different bpb — just show bags
+    return totalWHBags + ' bags total';
+  })();
+  document.getElementById('prod-wh-total').textContent = totalWHFmt;
   document.getElementById('prod-wh-value').textContent = fmt(totalWHValue);
 
   document.getElementById('product-list').innerHTML = filtered.map(p => {
     const cpb = p.cases_per_box || 4;
     const whBags = p.pos_id ? (whMap[p.pos_id]||0) : 0;
     const trBags = p.pos_id ? (trMap[p.pos_id]||0) : 0;
-    const whBoxes = Math.floor(whBags/cpb), whRem = whBags%cpb;
-    const trBoxes = Math.floor(trBags/cpb), trRem = trBags%cpb;
-    const whFmt = whBoxes>0 ? `${whBoxes} box${whBoxes>1?'es':''}${whRem>0?' + '+whRem+' bags':''}` : `${whBags} bags`;
-    const trFmt = trBoxes>0 ? `${trBoxes} box${trBoxes>1?'es':''}${trRem>0?' + '+trRem+' bags':''}` : `${trBags} bags`;
+    const whFmt = fmtStock(whBags, cpb);
+    const trFmt = fmtStock(trBags, cpb);
     const margin = p.sell_price && p.cost_price ? (((p.sell_price-p.cost_price)/p.sell_price)*100).toFixed(0) : 0;
     return `<tr>
       <td><strong>${p.icon||'📦'} ${p.name}</strong><div style="font-size:11px;color:var(--text2);">📦 ${cpb} bags/box · ${p.unit||''}</div></td>
@@ -1775,12 +1786,15 @@ function loadPurchaseOrders() {
   document.getElementById('pur-pending').textContent = fmt(pending);
   document.getElementById('pur-paid').textContent = fmt(paid);
   document.getElementById('pur-units').textContent = units + ' boxes';
-  document.getElementById('purchase-order-list').innerHTML = filtered.sort((a,b)=>b.date.localeCompare(a.date)).map(o => `
-    <tr>
+  document.getElementById('purchase-order-list').innerHTML = filtered.sort((a,b)=>b.date.localeCompare(a.date)).map(o => {
+    const cpb = o.cases_per_box || 1;
+    const totalBags = o.total_cases || (o.qty * cpb);
+    const bagsFmt = fmtStock(totalBags, cpb);
+    return `<tr>
       <td>${o.date}</td>
       <td><strong>${o.invoice_ref||'—'}</strong></td>
       <td>${o.product}</td>
-      <td style="text-align:center;font-weight:700;">${o.qty}</td>
+      <td style="text-align:center;font-weight:700;">${o.qty} box${o.qty!==1?'es':''}<br><small style="color:var(--text2);">${bagsFmt}</small></td>
       <td>${fmt(o.unit_price)}</td>
       <td style="font-weight:700;color:var(--navy);">${fmt(o.total)}</td>
       <td><span class="badge badge-${o.status==='paid'?'green':o.status==='pending'?'red':'gold'}">${o.status}</span></td>
@@ -1788,7 +1802,8 @@ function loadPurchaseOrders() {
         ${o.status!=='paid'?`<button class="btn btn-success btn-sm" onclick="markPOPaid('${o.id}')">✅ Paid</button>`:''}
         <button class="btn btn-danger btn-sm" onclick="deletePO('${o.id}')">✕</button>
       </td>
-    </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;padding:20px;color:#999;">No purchases yet</td></tr>';
+    </tr>`;
+  }).join('') || '<tr><td colspan="8" style="text-align:center;padding:20px;color:#999;">No purchases yet</td></tr>';
 }
 
 function openAddPurchaseOrderModal() {
@@ -2022,14 +2037,17 @@ function loadCOGS() {
             const orders = lsGet('fin_purchase_orders').filter(o=>o.date>=from&&o.date<=to);
             const totalBoxes = orders.reduce((a,o)=>a+(o.qty||0),0);
             if (!totalBoxes) return '<div class="empty"><div class="empty-icon">📦</div><div>No purchases in this period</div></div>';
+            const totalBagsAll = orders.reduce((a,o)=>a+(o.total_cases||(o.qty*(o.cases_per_box||1))),0);
             const costPerBox = totalCOGS / totalBoxes;
-            const products = posData.products;
+            const costPerBag = totalBagsAll > 0 ? totalCOGS / totalBagsAll : 0;
             return `
               <table style="font-size:13px;">
-                <tr><td>📦 Total Boxes Purchased</td><td style="text-align:right;font-weight:700;">${totalBoxes}</td></tr>
+                <tr><td>📦 Total Boxes Purchased</td><td style="text-align:right;font-weight:700;">${totalBoxes} boxes</td></tr>
+                <tr><td>🛍 Total Bags Purchased</td><td style="text-align:right;font-weight:700;">${totalBagsAll} bags</td></tr>
                 <tr><td>🛒 Purchase Cost/Box</td><td style="text-align:right;color:var(--red);">${fmt(purchaseCost/totalBoxes)}</td></tr>
                 <tr><td>🚢 Import Cost/Box</td><td style="text-align:right;color:var(--red);">${fmt(importCosts/totalBoxes)}</td></tr>
                 <tr style="font-weight:800;border-top:2px solid var(--border);"><td style="padding:8px 0;">Total Cost/Box</td><td style="text-align:right;color:var(--navy);">${fmt(costPerBox)}</td></tr>
+                <tr><td>💰 Total Cost/Bag</td><td style="text-align:right;color:var(--navy);">${fmt(costPerBag)}</td></tr>
                 <tr style="color:var(--green);"><td>💵 Revenue/Box (avg)</td><td style="text-align:right;font-weight:700;">${fmt(totalBoxes>0?revenue/totalBoxes:0)}</td></tr>
                 <tr style="font-weight:800;color:${(revenue-totalCOGS)/totalBoxes>=0?'green':'red'};"><td>📈 Profit/Box</td><td style="text-align:right;">${fmt(totalBoxes>0?(revenue-totalCOGS)/totalBoxes:0)}</td></tr>
               </table>`;
