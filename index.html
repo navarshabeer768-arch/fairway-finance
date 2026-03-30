@@ -751,6 +751,20 @@ tr:hover td{background:#f8f9ff;}
     <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-import-cost')">Cancel</button><button class="btn btn-primary" onclick="saveImportCost()">Save</button></div>
   </div>
 </div>
+
+<div class="modal-overlay" id="modal-drawing">
+  <div class="modal">
+    <div class="modal-title">Add Owner Drawing</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="drw-date"></div>
+      <div class="form-group"><label class="form-label">Amount (QR)</label><input type="number" class="form-input" id="drw-amount" placeholder="0.00"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:16px;"><label class="form-label">Description</label><input type="text" class="form-input" id="drw-desc" placeholder="e.g. Personal withdrawal, owner salary"></div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-drawing')">Cancel</button><button class="btn btn-primary" onclick="saveDrawing()">Save</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-asset">
   <div class="modal">
     <div class="modal-title" id="asset-modal-title">Add Fixed Asset</div>
     <div class="form-row">
@@ -784,17 +798,7 @@ tr:hover td{background:#f8f9ff;}
   </div>
 </div>
 
-<div class="modal-overlay" id="modal-drawing">
-  <div class="modal">
-    <div class="modal-title">Add Owner Drawing</div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="drw-date"></div>
-      <div class="form-group"><label class="form-label">Amount (QR)</label><input type="number" class="form-input" id="drw-amount" placeholder="0.00"></div>
-    </div>
-    <div class="form-group" style="margin-bottom:16px;"><label class="form-label">Description</label><input type="text" class="form-input" id="drw-desc" placeholder="e.g. Personal withdrawal, owner salary"></div>
-    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-drawing')">Cancel</button><button class="btn btn-primary" onclick="saveDrawing()">Save</button></div>
-  </div>
-</div>
+<div class="modal-overlay" id="modal-bank-tx">
   <div class="modal">
     <div class="modal-title">Add Bank Transaction</div>
     <div class="form-row">
