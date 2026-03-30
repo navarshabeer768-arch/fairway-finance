@@ -148,7 +148,10 @@ tr:hover td{background:#f8f9ff;}
     <div class="nav-item" onclick="showPage('assets')"><span class="icon">🏗️</span> Fixed Assets</div>
     <div class="nav-item" onclick="showPage('liabilities')"><span class="icon">📑</span> Liabilities</div>
     <div class="nav-section">Operations</div>
-    <div class="nav-item" onclick="showPage('suppliers')"><span class="icon">🏭</span> Suppliers & Purchases</div>
+    <div class="nav-item" onclick="showPage('purchases')"><span class="icon">🛒</span> Purchases from Alaa</div>
+    <div class="nav-item" onclick="showPage('importcosts')"><span class="icon">🚢</span> Import & Extra Costs</div>
+    <div class="nav-item" onclick="showPage('cogs')"><span class="icon">📊</span> Cost Analysis</div>
+    <div class="nav-item" onclick="showPage('suppliers')"><span class="icon">🏭</span> Suppliers</div>
     <div class="nav-item" onclick="showPage('salaries')"><span class="icon">👥</span> Employee Salaries</div>
     <div class="nav-item" onclick="showPage('bank')"><span class="icon">🏦</span> Bank Reconciliation</div>
     <div class="nav-section">Customers</div>
@@ -389,6 +392,97 @@ tr:hover td{background:#f8f9ff;}
       </div>
     </div>
 
+    <!-- PURCHASES FROM ALAA -->
+    <div class="page" id="page-purchases">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div class="tabs">
+          <div class="tab active" onclick="switchPurchaseTab('list')">📦 Purchase Orders</div>
+          <div class="tab" onclick="switchPurchaseTab('summary')">📊 Summary</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openAddPurchaseOrderModal()">+ New Purchase</button>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card navy"><div class="stat-label">📦 Total Purchased (QR)</div><div class="stat-val navy" id="pur-total">QR 0</div></div>
+        <div class="stat-card red"><div class="stat-label">⏳ Pending Payment</div><div class="stat-val red" id="pur-pending">QR 0</div></div>
+        <div class="stat-card green"><div class="stat-label">✅ Paid</div><div class="stat-val green" id="pur-paid">QR 0</div></div>
+        <div class="stat-card gold"><div class="stat-label">📦 Total Boxes/Units</div><div class="stat-val gold" id="pur-units">0</div></div>
+      </div>
+      <div class="card" id="purchase-order-card">
+        <div class="card-header">
+          <div class="card-title">Purchase Orders from Alaa (Oman)</div>
+          <div style="display:flex;gap:8px;">
+            <input type="date" class="form-input" id="pur-from" style="width:140px;">
+            <input type="date" class="form-input" id="pur-to" style="width:140px;">
+            <button class="btn btn-outline btn-sm" onclick="loadPurchaseOrders()">Filter</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <table>
+            <thead><tr><th>Date</th><th>Invoice #</th><th>Product</th><th>Qty (Boxes)</th><th>Unit Price (QR)</th><th>Total (QR)</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="purchase-order-list"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- IMPORT & EXTRA COSTS -->
+    <div class="page" id="page-importcosts">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div class="card-title" style="font-size:16px;">🚢 Import & Extra Costs</div>
+        <button class="btn btn-primary btn-sm" onclick="openAddImportCostModal()">+ Add Cost</button>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card red"><div class="stat-label">🛃 Qatar Customs / Import Fees</div><div class="stat-val red" id="cost-customs">QR 0</div></div>
+        <div class="stat-card navy"><div class="stat-label">🏭 Warehouse / Storage Rent</div><div class="stat-val navy" id="cost-warehouse">QR 0</div></div>
+        <div class="stat-card gold"><div class="stat-label">👷 Loading / Unloading Staff</div><div class="stat-val gold" id="cost-loading">QR 0</div></div>
+        <div class="stat-card green"><div class="stat-label">🚛 Transport / Freight</div><div class="stat-val green" id="cost-transport">QR 0</div></div>
+        <div class="stat-card red"><div class="stat-label">⛽ Truck Fuel</div><div class="stat-val red" id="cost-fuel">QR 0</div></div>
+        <div class="stat-card navy"><div class="stat-label">📦 Total Extra Costs</div><div class="stat-val navy" id="cost-total">QR 0</div></div>
+      </div>
+      <div class="filters">
+        <div class="filter-group"><span class="filter-label">From:</span><input type="date" class="form-input" id="ic-from" style="width:140px;"></div>
+        <div class="filter-group"><span class="filter-label">To:</span><input type="date" class="form-input" id="ic-to" style="width:140px;"></div>
+        <div class="filter-group"><span class="filter-label">Category:</span>
+          <select class="form-select" id="ic-cat" style="width:160px;">
+            <option value="">All</option>
+            <option value="Customs">Qatar Customs</option>
+            <option value="Warehouse">Warehouse Rent</option>
+            <option value="Loading">Loading/Unloading</option>
+            <option value="Transport">Transport/Freight</option>
+            <option value="Fuel">Truck Fuel</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="loadImportCosts()">Filter</button>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">All Import & Extra Costs</div></div>
+        <div class="card-body">
+          <table>
+            <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount (QR)</th><th>Reference</th><th>Action</th></tr></thead>
+            <tbody id="import-cost-list"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- COST ANALYSIS / COGS -->
+    <div class="page" id="page-cogs">
+      <div class="filters">
+        <div class="filter-group"><span class="filter-label">From:</span><input type="date" class="form-input" id="cogs-from" style="width:140px;"></div>
+        <div class="filter-group"><span class="filter-label">To:</span><input type="date" class="form-input" id="cogs-to" style="width:140px;"></div>
+        <button class="btn btn-primary btn-sm" onclick="loadCOGS()">Calculate</button>
+        <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ Print</button>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card green"><div class="stat-label">💵 Total Revenue</div><div class="stat-val green" id="cogs-revenue">QR 0</div></div>
+        <div class="stat-card red"><div class="stat-label">🛒 Purchase Cost</div><div class="stat-val red" id="cogs-purchase">QR 0</div></div>
+        <div class="stat-card red"><div class="stat-label">🚢 Import & Extra Costs</div><div class="stat-val red" id="cogs-import">QR 0</div></div>
+        <div class="stat-card navy"><div class="stat-label">📈 Gross Profit</div><div class="stat-val navy" id="cogs-gross">QR 0</div></div>
+      </div>
+      <div id="cogs-content"></div>
+    </div>
+
     <!-- FIXED ASSETS -->
     <div class="page" id="page-assets">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
@@ -583,7 +677,59 @@ tr:hover td{background:#f8f9ff;}
   </div>
 </div>
 
-<div class="modal-overlay" id="modal-asset">
+<div class="modal-overlay" id="modal-purchase-order">
+  <div class="modal">
+    <div class="modal-title">New Purchase from Alaa (Oman)</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="po-date"></div>
+      <div class="form-group"><label class="form-label">Alaa Invoice #</label><input type="text" class="form-input" id="po-inv" placeholder="Alaa invoice number"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Product Name</label><input type="text" class="form-input" id="po-product" placeholder="e.g. Alaa Popcorn Cheese 12x30g"></div>
+      <div class="form-group"><label class="form-label">Quantity (Boxes/Cartons)</label><input type="number" class="form-input" id="po-qty" placeholder="0"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Unit Price per Box (QR)</label><input type="number" class="form-input" id="po-unit-price" placeholder="0.00" oninput="calcPOTotal()"></div>
+      <div class="form-group"><label class="form-label">Total Amount (QR)</label><input type="number" class="form-input" id="po-total" placeholder="0.00" style="background:#f5f5f5;"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Payment Status</label>
+        <select class="form-select" id="po-status">
+          <option value="paid">Paid</option>
+          <option value="pending">Pending</option>
+          <option value="partial">Partial</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Notes</label><input type="text" class="form-input" id="po-notes" placeholder="Any notes"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-purchase-order')">Cancel</button><button class="btn btn-primary" onclick="savePurchaseOrder()">Save Purchase</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-import-cost">
+  <div class="modal">
+    <div class="modal-title">Add Import / Extra Cost</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="ic-date"></div>
+      <div class="form-group"><label class="form-label">Category</label>
+        <select class="form-select" id="ic-category">
+          <option value="Customs">🛃 Qatar Customs / Import Fee</option>
+          <option value="Warehouse">🏭 Warehouse / Storage Rent</option>
+          <option value="Loading">👷 Loading / Unloading Staff</option>
+          <option value="Transport">🚛 Transport / Freight from Oman</option>
+          <option value="Fuel">⛽ Truck Fuel</option>
+          <option value="Other">📦 Other Cost</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Amount (QR)</label><input type="number" class="form-input" id="ic-amount" placeholder="0.00"></div>
+      <div class="form-group"><label class="form-label">Reference</label><input type="text" class="form-input" id="ic-reference" placeholder="Receipt #, ref"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:16px;"><label class="form-label">Description</label><input type="text" class="form-input" id="ic-description" placeholder="Details about this cost"></div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-import-cost')">Cancel</button><button class="btn btn-primary" onclick="saveImportCost()">Save</button></div>
+  </div>
+</div>
   <div class="modal">
     <div class="modal-title" id="asset-modal-title">Add Fixed Asset</div>
     <div class="form-row">
@@ -705,6 +851,9 @@ function loadCurrentPage(page) {
   else if (page === 'income') loadTransactions();
   else if (page === 'suppliers') loadSuppliers();
   else if (page === 'salaries') loadEmployees();
+  else if (page === 'purchases') loadPurchaseOrders();
+  else if (page === 'importcosts') loadImportCosts();
+  else if (page === 'cogs') loadCOGS();
   else if (page === 'assets') loadAssets();
   else if (page === 'liabilities') loadPayables();
   else if (page === 'bank') loadBank();
@@ -720,9 +869,12 @@ const pageTitles = {
   pl: ['Profit & Loss', 'Income statement for period'],
   balance: ['Balance Sheet', 'Assets, liabilities and equity'],
   income: ['Income & Expenses', 'All transactions'],
+  purchases: ['Purchases from Alaa', 'Track all purchases from Oman supplier'],
+  importcosts: ['Import & Extra Costs', 'Customs, warehouse, transport, fuel'],
+  cogs: ['Cost Analysis', 'Full cost breakdown per box & profit margin'],
   assets: ['Fixed Assets', 'Vehicles, equipment, furniture & more'],
   liabilities: ['Liabilities', 'Supplier payables & owner drawings'],
-  suppliers: ['Suppliers & Purchases', 'Manage suppliers and purchase orders'],
+  suppliers: ['Suppliers', 'Supplier management'],
   salaries: ['Employee Salaries', 'Payroll management'],
   bank: ['Bank Reconciliation', 'Track cash flow'],
   ledger: ['Customer Ledger', 'Customer account statements'],
@@ -1267,6 +1419,226 @@ function loadAging() {
 }
 
 // ═══════════════════════════════════════════
+// PURCHASES FROM ALAA
+// ═══════════════════════════════════════════
+let currentPurchaseTab = 'list';
+function switchPurchaseTab(tab) {
+  currentPurchaseTab = tab;
+  document.querySelectorAll('#page-purchases .tab').forEach((t,i) => t.classList.toggle('active', i===(tab==='list'?0:1)));
+  loadPurchaseOrders();
+}
+
+function loadPurchaseOrders() {
+  const orders = lsGet('fin_purchase_orders');
+  const from = document.getElementById('pur-from')?.value || '';
+  const to = document.getElementById('pur-to')?.value || '';
+  const filtered = orders.filter(o => (!from || o.date >= from) && (!to || o.date <= to));
+  const total = filtered.reduce((a,o) => a+o.total, 0);
+  const pending = filtered.filter(o=>o.status==='pending'||o.status==='partial').reduce((a,o)=>a+o.total,0);
+  const paid = filtered.filter(o=>o.status==='paid').reduce((a,o)=>a+o.total,0);
+  const units = filtered.reduce((a,o) => a+(o.qty||0), 0);
+  document.getElementById('pur-total').textContent = fmt(total);
+  document.getElementById('pur-pending').textContent = fmt(pending);
+  document.getElementById('pur-paid').textContent = fmt(paid);
+  document.getElementById('pur-units').textContent = units + ' boxes';
+  document.getElementById('purchase-order-list').innerHTML = filtered.sort((a,b)=>b.date.localeCompare(a.date)).map(o => `
+    <tr>
+      <td>${o.date}</td>
+      <td><strong>${o.invoice_ref||'—'}</strong></td>
+      <td>${o.product}</td>
+      <td style="text-align:center;font-weight:700;">${o.qty}</td>
+      <td>${fmt(o.unit_price)}</td>
+      <td style="font-weight:700;color:var(--navy);">${fmt(o.total)}</td>
+      <td><span class="badge badge-${o.status==='paid'?'green':o.status==='pending'?'red':'gold'}">${o.status}</span></td>
+      <td>
+        ${o.status!=='paid'?`<button class="btn btn-success btn-sm" onclick="markPOPaid('${o.id}')">✅ Paid</button>`:''}
+        <button class="btn btn-danger btn-sm" onclick="deletePO('${o.id}')">✕</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;padding:20px;color:#999;">No purchases yet</td></tr>';
+}
+
+function openAddPurchaseOrderModal() {
+  document.getElementById('po-date').value = today();
+  document.getElementById('po-inv').value = '';
+  document.getElementById('po-product').value = '';
+  document.getElementById('po-qty').value = '';
+  document.getElementById('po-unit-price').value = '';
+  document.getElementById('po-total').value = '';
+  openModal('modal-purchase-order');
+}
+
+function calcPOTotal() {
+  const qty = parseFloat(document.getElementById('po-qty').value) || 0;
+  const price = parseFloat(document.getElementById('po-unit-price').value) || 0;
+  document.getElementById('po-total').value = (qty * price).toFixed(2);
+}
+
+function savePurchaseOrder() {
+  const qty = parseFloat(document.getElementById('po-qty').value) || 0;
+  const unitPrice = parseFloat(document.getElementById('po-unit-price').value) || 0;
+  const o = {
+    id: Date.now().toString(),
+    date: document.getElementById('po-date').value,
+    invoice_ref: document.getElementById('po-inv').value,
+    product: document.getElementById('po-product').value,
+    qty, unit_price: unitPrice,
+    total: parseFloat(document.getElementById('po-total').value) || qty * unitPrice,
+    status: document.getElementById('po-status').value,
+    notes: document.getElementById('po-notes').value
+  };
+  if (!o.product || !o.total) { alert('Fill product and amount'); return; }
+  const all = lsGet('fin_purchase_orders'); all.unshift(o); lsSet('fin_purchase_orders', all);
+  closeModal('modal-purchase-order'); loadPurchaseOrders();
+}
+
+function markPOPaid(id) {
+  const all = lsGet('fin_purchase_orders');
+  const idx = all.findIndex(o => o.id === id);
+  if (idx >= 0) { all[idx].status = 'paid'; lsSet('fin_purchase_orders', all); }
+  loadPurchaseOrders();
+}
+
+function deletePO(id) {
+  if (!confirm('Delete this purchase?')) return;
+  lsSet('fin_purchase_orders', lsGet('fin_purchase_orders').filter(o => o.id !== id));
+  loadPurchaseOrders();
+}
+
+// ═══════════════════════════════════════════
+// IMPORT & EXTRA COSTS
+// ═══════════════════════════════════════════
+const COST_ICONS = { Customs:'🛃', Warehouse:'🏭', Loading:'👷', Transport:'🚛', Fuel:'⛽', Other:'📦' };
+const COST_COLORS = { Customs:'red', Warehouse:'navy', Loading:'gold', Transport:'green', Fuel:'red', Other:'navy' };
+
+function loadImportCosts() {
+  const all = lsGet('fin_import_costs');
+  const from = document.getElementById('ic-from')?.value || '';
+  const to = document.getElementById('ic-to')?.value || '';
+  const cat = document.getElementById('ic-cat')?.value || '';
+  let filtered = all.filter(c => (!from||c.date>=from) && (!to||c.date<=to) && (!cat||c.category===cat));
+  // Totals by category
+  const totals = { Customs:0, Warehouse:0, Loading:0, Transport:0, Fuel:0, Other:0 };
+  all.forEach(c => { totals[c.category] = (totals[c.category]||0) + c.amount; });
+  const total = Object.values(totals).reduce((a,v)=>a+v,0);
+  document.getElementById('cost-customs').textContent = fmt(totals.Customs);
+  document.getElementById('cost-warehouse').textContent = fmt(totals.Warehouse);
+  document.getElementById('cost-loading').textContent = fmt(totals.Loading);
+  document.getElementById('cost-transport').textContent = fmt(totals.Transport);
+  document.getElementById('cost-fuel').textContent = fmt(totals.Fuel);
+  document.getElementById('cost-total').textContent = fmt(total);
+  document.getElementById('import-cost-list').innerHTML = filtered.sort((a,b)=>b.date.localeCompare(a.date)).map(c => `
+    <tr>
+      <td>${c.date}</td>
+      <td><span class="badge badge-${COST_COLORS[c.category]||'navy'}">${COST_ICONS[c.category]||'📦'} ${c.category}</span></td>
+      <td>${c.description}</td>
+      <td style="font-weight:700;color:var(--red);">${fmt(c.amount)}</td>
+      <td>${c.reference||'—'}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteImportCost('${c.id}')">✕</button></td>
+    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999;">No costs added</td></tr>';
+}
+
+function openAddImportCostModal() {
+  document.getElementById('ic-date').value = today();
+  document.getElementById('ic-amount').value = '';
+  document.getElementById('ic-description').value = '';
+  document.getElementById('ic-reference').value = '';
+  openModal('modal-import-cost');
+}
+
+function saveImportCost() {
+  const c = {
+    id: Date.now().toString(),
+    date: document.getElementById('ic-date').value,
+    category: document.getElementById('ic-category').value,
+    amount: parseFloat(document.getElementById('ic-amount').value) || 0,
+    description: document.getElementById('ic-description').value,
+    reference: document.getElementById('ic-reference').value
+  };
+  if (!c.amount) { alert('Enter amount'); return; }
+  const all = lsGet('fin_import_costs'); all.unshift(c); lsSet('fin_import_costs', all);
+  closeModal('modal-import-cost'); loadImportCosts();
+}
+
+function deleteImportCost(id) {
+  if (!confirm('Delete?')) return;
+  lsSet('fin_import_costs', lsGet('fin_import_costs').filter(c => c.id !== id));
+  loadImportCosts();
+}
+
+// ═══════════════════════════════════════════
+// COST ANALYSIS (COGS)
+// ═══════════════════════════════════════════
+function loadCOGS() {
+  const from = document.getElementById('cogs-from').value || monthStart();
+  const to = document.getElementById('cogs-to').value || today();
+  const invs = posData.invoices.filter(i => i.date >= from && i.date <= to);
+  const revenue = invs.reduce((a,i) => a+(i.total_amount||0), 0);
+  const purchaseCost = lsGet('fin_purchase_orders').filter(o => o.date>=from && o.date<=to).reduce((a,o)=>a+o.total,0);
+  const importCosts = lsGet('fin_import_costs').filter(c => c.date>=from && c.date<=to).reduce((a,c)=>a+c.amount,0);
+  const costsByCategory = {};
+  lsGet('fin_import_costs').filter(c=>c.date>=from&&c.date<=to).forEach(c=>{
+    costsByCategory[c.category] = (costsByCategory[c.category]||0)+c.amount;
+  });
+  const totalCOGS = purchaseCost + importCosts;
+  const grossProfit = revenue - totalCOGS;
+  const salaries = lsGet(LS.payroll).filter(p=>p.month>=from.slice(0,7)&&p.month<=to.slice(0,7)).reduce((a,p)=>a+p.net_pay,0);
+  const otherExp = lsGet(LS.transactions).filter(t=>t.type==='expense'&&t.date>=from&&t.date<=to).reduce((a,t)=>a+t.amount,0);
+  const netProfit = grossProfit - salaries - otherExp;
+  const margin = revenue > 0 ? ((grossProfit/revenue)*100).toFixed(1) : 0;
+
+  document.getElementById('cogs-revenue').textContent = fmt(revenue);
+  document.getElementById('cogs-purchase').textContent = fmt(purchaseCost);
+  document.getElementById('cogs-import').textContent = fmt(importCosts);
+  document.getElementById('cogs-gross').textContent = fmt(grossProfit);
+  document.getElementById('cogs-gross').style.color = grossProfit>=0?'var(--green)':'var(--red)';
+
+  document.getElementById('cogs-content').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="card">
+        <div class="card-header"><div class="card-title">📊 Full Cost Breakdown</div></div>
+        <div style="padding:20px;">
+          <table style="font-size:13px;">
+            <tr style="font-weight:700;color:var(--green);"><td>💵 Revenue</td><td style="text-align:right;">${fmt(revenue)}</td></tr>
+            <tr><td colspan="2" style="padding:8px 0;font-weight:700;color:var(--text2);font-size:11px;">COST OF GOODS</td></tr>
+            <tr><td>🛒 Purchases from Alaa</td><td style="text-align:right;color:var(--red);">- ${fmt(purchaseCost)}</td></tr>
+            <tr><td>🛃 Qatar Customs</td><td style="text-align:right;color:var(--red);">- ${fmt(costsByCategory.Customs||0)}</td></tr>
+            <tr><td>🏭 Warehouse Rent</td><td style="text-align:right;color:var(--red);">- ${fmt(costsByCategory.Warehouse||0)}</td></tr>
+            <tr><td>👷 Loading/Unloading</td><td style="text-align:right;color:var(--red);">- ${fmt(costsByCategory.Loading||0)}</td></tr>
+            <tr><td>🚛 Transport/Freight</td><td style="text-align:right;color:var(--red);">- ${fmt(costsByCategory.Transport||0)}</td></tr>
+            <tr><td>⛽ Truck Fuel</td><td style="text-align:right;color:var(--red);">- ${fmt(costsByCategory.Fuel||0)}</td></tr>
+            <tr style="font-weight:800;border-top:2px solid var(--border);"><td style="padding:8px 0;">Gross Profit (${margin}%)</td><td style="text-align:right;color:${grossProfit>=0?'var(--green)':'var(--red)'};">${fmt(grossProfit)}</td></tr>
+            <tr><td colspan="2" style="padding:8px 0;font-weight:700;color:var(--text2);font-size:11px;">OPERATING EXPENSES</td></tr>
+            <tr><td>👥 Salaries</td><td style="text-align:right;color:var(--red);">- ${fmt(salaries)}</td></tr>
+            <tr><td>📋 Other Expenses</td><td style="text-align:right;color:var(--red);">- ${fmt(otherExp)}</td></tr>
+            <tr style="font-weight:900;font-size:15px;border-top:2px solid var(--navy);background:${netProfit>=0?'#e8f5e9':'#ffebee'};"><td style="padding:10px 0;">Net Profit</td><td style="text-align:right;color:${netProfit>=0?'var(--green)':'var(--red)'};">${fmt(netProfit)}</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">📦 Cost Per Box Analysis</div></div>
+        <div style="padding:20px;">
+          ${(() => {
+            const orders = lsGet('fin_purchase_orders').filter(o=>o.date>=from&&o.date<=to);
+            const totalBoxes = orders.reduce((a,o)=>a+(o.qty||0),0);
+            if (!totalBoxes) return '<div class="empty"><div class="empty-icon">📦</div><div>No purchases in this period</div></div>';
+            const costPerBox = totalCOGS / totalBoxes;
+            const products = posData.products;
+            return `
+              <table style="font-size:13px;">
+                <tr><td>📦 Total Boxes Purchased</td><td style="text-align:right;font-weight:700;">${totalBoxes}</td></tr>
+                <tr><td>🛒 Purchase Cost/Box</td><td style="text-align:right;color:var(--red);">${fmt(purchaseCost/totalBoxes)}</td></tr>
+                <tr><td>🚢 Import Cost/Box</td><td style="text-align:right;color:var(--red);">${fmt(importCosts/totalBoxes)}</td></tr>
+                <tr style="font-weight:800;border-top:2px solid var(--border);"><td style="padding:8px 0;">Total Cost/Box</td><td style="text-align:right;color:var(--navy);">${fmt(costPerBox)}</td></tr>
+                <tr style="color:var(--green);"><td>💵 Revenue/Box (avg)</td><td style="text-align:right;font-weight:700;">${fmt(totalBoxes>0?revenue/totalBoxes:0)}</td></tr>
+                <tr style="font-weight:800;color:${(revenue-totalCOGS)/totalBoxes>=0?'green':'red'};"><td>📈 Profit/Box</td><td style="text-align:right;">${fmt(totalBoxes>0?(revenue-totalCOGS)/totalBoxes:0)}</td></tr>
+              </table>`;
+          })()}
+        </div>
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════
 // FIXED ASSETS
 // ═══════════════════════════════════════════
 const ASSET_ICONS = { Vehicle:'🚛', Equipment:'🛠️', Furniture:'🪑', Cash:'💰', Other:'📦' };
@@ -1458,6 +1830,12 @@ async function init() {
   document.getElementById('aging-date').value = today();
   document.getElementById('ledger-from').value = monthStart();
   document.getElementById('ledger-to').value = today();
+  document.getElementById('pur-from').value = monthStart();
+  document.getElementById('pur-to').value = today();
+  document.getElementById('ic-from').value = monthStart();
+  document.getElementById('ic-to').value = today();
+  document.getElementById('cogs-from').value = monthStart();
+  document.getElementById('cogs-to').value = today();
   // Sync data
   await syncData();
   // Populate customer dropdown
