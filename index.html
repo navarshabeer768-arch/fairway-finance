@@ -1072,7 +1072,8 @@ function showPage(page) {
 // ═══════════════════════════════════════════
 function fmt(n) { return 'QR ' + parseFloat(n || 0).toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function fmtStock(totalBags, cpb) {
-  cpb = parseInt(cpb) || 1;
+  cpb = parseInt(cpb) || 4;
+  if (totalBags === 0) return cpb > 1 ? '0 boxes' : '0';
   if (cpb <= 1) return totalBags + ' bags';
   const boxes = Math.floor(totalBags / cpb);
   const rem = totalBags % cpb;
@@ -1623,17 +1624,15 @@ function loadProducts() {
   const whMap = {}; (posData.warehouse_stock||[]).forEach(w => whMap[w.product_id] = w.quantity||0);
   const trMap = {}; (posData.inventory||[]).forEach(t => trMap[t.product_id] = t.quantity||0);
 
-  let totalWHBags = 0, totalWHValue = 0;
+  let totalWHBags = 0, totalWHValue = 0, totalWHBoxes = 0;
   products.forEach(p => {
+    const cpb = p.cases_per_box || 4;
     const wh = p.pos_id ? (whMap[p.pos_id]||0) : 0;
     totalWHBags += wh;
-    totalWHValue += wh * (p.cost_price||0);
+    totalWHBoxes += Math.floor(wh / cpb);
+    totalWHValue += wh * ((p.cost_price||0) / cpb);
   });
-  const totalWHFmt = (() => {
-    // overall can't show boxes since different products have different bpb — just show bags
-    return totalWHBags + ' bags total';
-  })();
-  document.getElementById('prod-wh-total').textContent = totalWHFmt;
+  document.getElementById('prod-wh-total').textContent = totalWHBoxes + ' boxes total';
   document.getElementById('prod-wh-value').textContent = fmt(totalWHValue);
 
   document.getElementById('product-list').innerHTML = filtered.map(p => {
