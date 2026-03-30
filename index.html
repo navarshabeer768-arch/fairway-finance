@@ -958,25 +958,57 @@ function lsSet(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
 // ═══════════════════════════════════════════
 // POS SYNC DATA (from Supabase)
 // ═══════════════════════════════════════════
-let posData = { invoices: [], customers: [], products: [], invoice_items: [], expenses: [] };
+let posData = { invoices: [], customers: [], products: [], invoice_items: [], expenses: [], warehouse_stock: [], inventory: [] };
 
 async function syncData() {
   document.getElementById('sync-status').textContent = 'Syncing...';
   try {
-    const [inv, cust, prod, items, exp] = await Promise.all([
+    const [inv, cust, prod, items, exp, wh, truck] = await Promise.all([
       sb.from('invoices').select('*'),
       sb.from('customers').select('*'),
       sb.from('products').select('*'),
       sb.from('invoice_items').select('*'),
       sb.from('expenses').select('*'),
+      sb.from('warehouse_stock').select('*'),
+      sb.from('inventory').select('*'),
     ]);
     posData.invoices = inv.data || [];
     posData.customers = cust.data || [];
     posData.products = prod.data || [];
     posData.invoice_items = items.data || [];
     posData.expenses = exp.data || [];
+    posData.warehouse_stock = wh.data || [];
+    posData.inventory = truck.data || [];
+    // Merge warehouse & truck qty into products for easy access
+    const whMap = {}; posData.warehouse_stock.forEach(w => whMap[w.product_id] = w.quantity || 0);
+    const trMap = {}; posData.inventory.forEach(t => trMap[t.product_id] = t.quantity || 0);
+    posData.products = posData.products.map(p => ({
+      ...p,
+      warehouse_qty: whMap[p.product_id] || 0,
+      truck_qty: trMap[p.product_id] || 0
+    }));
+    // Sync POS products into fin_products (merge, don't overwrite manual ones)
+    const finProds = lsGet('fin_products');
+    const finPosIds = new Set(finProds.map(p => p.pos_id).filter(Boolean));
+    const newFromPOS = posData.products
+      .filter(p => !finPosIds.has(p.product_id))
+      .map(p => ({
+        id: 'pos-' + p.product_id,
+        pos_id: p.product_id,
+        name: p.name,
+        category: p.category || '',
+        sell_price: p.selling_price || 0,
+        cost_price: p.cost_price || 0,
+        cases_per_box: p.cases_per_box || 4,
+        unit: p.unit || '',
+        barcode: p.barcode || '',
+        icon: p.icon || '📦',
+        notes: ''
+      }));
+    if (newFromPOS.length > 0) {
+      lsSet('fin_products', [...finProds, ...newFromPOS]);
+    }
     document.getElementById('sync-status').textContent = 'Last sync: ' + new Date().toLocaleTimeString();
-    // Reload current page
     const activePage = document.querySelector('.page.active');
     if (activePage) loadCurrentPage(activePage.id.replace('page-', ''));
   } catch(e) {
@@ -1576,53 +1608,43 @@ function loadProducts() {
   const products = lsGet('fin_products');
   const search = (document.getElementById('prod-search')?.value||'').toLowerCase();
   const filtered = products.filter(p => !search || p.name.toLowerCase().includes(search));
-
   document.getElementById('prod-count').textContent = products.length;
 
-  // Get warehouse stocks from Supabase posData
-  const whMap = {};
-  const trMap = {};
-  // Try to get from posData
-  if (posData.products) {
-    posData.products.forEach(p => {
-      whMap[p.product_id] = p.warehouse_qty || 0;
-      trMap[p.product_id] = p.truck_qty || 0;
-    });
-  }
-  // Calculate warehouse totals from purchases
-  const purchaseTotals = {};
-  lsGet('fin_purchase_orders').forEach(o => {
-    if (o.product_id) purchaseTotals[o.product_id] = (purchaseTotals[o.product_id]||0) + (o.qty||0);
-  });
+  // Real stock from Supabase sync
+  const whMap = {}; (posData.warehouse_stock||[]).forEach(w => whMap[w.product_id] = w.quantity||0);
+  const trMap = {}; (posData.inventory||[]).forEach(t => trMap[t.product_id] = t.quantity||0);
 
-  let totalWHBoxes = 0, totalWHValue = 0;
+  let totalWHBags = 0, totalWHValue = 0;
   products.forEach(p => {
-    const wh = purchaseTotals[p.id] || 0;
-    totalWHBoxes += wh;
+    const wh = p.pos_id ? (whMap[p.pos_id]||0) : 0;
+    totalWHBags += wh;
     totalWHValue += wh * (p.cost_price||0);
   });
-  document.getElementById('prod-wh-total').textContent = totalWHBoxes + ' boxes';
+  document.getElementById('prod-wh-total').textContent = totalWHBags + ' bags';
   document.getElementById('prod-wh-value').textContent = fmt(totalWHValue);
 
   document.getElementById('product-list').innerHTML = filtered.map(p => {
-    const whStock = purchaseTotals[p.id] || 0;
-    const margin = p.sell_price && p.cost_price ? (((p.sell_price - p.cost_price)/p.sell_price)*100).toFixed(0) : 0;
+    const cpb = p.cases_per_box || 4;
+    const whBags = p.pos_id ? (whMap[p.pos_id]||0) : 0;
+    const trBags = p.pos_id ? (trMap[p.pos_id]||0) : 0;
+    const whBoxes = Math.floor(whBags/cpb), whRem = whBags%cpb;
+    const trBoxes = Math.floor(trBags/cpb), trRem = trBags%cpb;
+    const whFmt = whBoxes>0 ? `${whBoxes} box${whBoxes>1?'es':''}${whRem>0?' + '+whRem+' bags':''}` : `${whBags} bags`;
+    const trFmt = trBoxes>0 ? `${trBoxes} box${trBoxes>1?'es':''}${trRem>0?' + '+trRem+' bags':''}` : `${trBags} bags`;
+    const margin = p.sell_price && p.cost_price ? (((p.sell_price-p.cost_price)/p.sell_price)*100).toFixed(0) : 0;
     return `<tr>
-      <td>
-        <strong>${p.icon||'📦'} ${p.name}</strong>
-        <div style="font-size:11px;color:var(--text2);">📦 ${p.cases_per_box||1} bags/box · ${p.unit||''} ${p.barcode?'· '+p.barcode:''}</div>
-      </td>
+      <td><strong>${p.icon||'📦'} ${p.name}</strong><div style="font-size:11px;color:var(--text2);">📦 ${cpb} bags/box · ${p.unit||''}</div></td>
       <td><span class="badge badge-blue">${p.category||'—'}</span></td>
       <td style="font-weight:700;color:var(--green);">${fmt(p.sell_price||0)}</td>
-      <td>${fmt(p.cost_price||0)} <small style="color:var(--text2);">(${margin}% margin)</small></td>
-      <td style="font-weight:700;color:var(--navy);">${whStock} boxes</td>
-      <td>—</td>
+      <td>${fmt(p.cost_price||0)} <small style="color:var(--text2);">(${margin}%)</small></td>
+      <td style="font-weight:700;color:var(--green);">${whFmt}</td>
+      <td style="font-weight:700;color:var(--navy);">${trFmt}</td>
       <td>
         <button class="btn btn-outline btn-sm" onclick="editProduct('${p.id}')">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">✕</button>
       </td>
     </tr>`;
-  }).join('') || '<tr><td colspan="7" style="text-align:center;padding:30px;color:#999;">No products yet — click + Add Product</td></tr>';
+  }).join('') || '<tr><td colspan="7" style="text-align:center;padding:30px;color:#999;">No products — click + Add Product or 🔄 Sync from POS</td></tr>';
 }
 
 function openAddProductModal() {
