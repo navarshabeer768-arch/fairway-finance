@@ -1,0 +1,1470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>New Fair Way Trading — Finance</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --navy:#1a237e;--navy2:#283593;--green:#1b5e20;--red:#b71c1c;
+  --gold:#f57f17;--bg:#f0f2f8;--card:#fff;--border:#e0e4ef;
+  --text:#1a1a2e;--text2:#5a6070;--sidebar:240px;
+}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh;}
+
+/* SIDEBAR */
+.sidebar{width:var(--sidebar);background:var(--navy);color:#fff;display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;overflow-y:auto;z-index:100;}
+.sidebar-logo{padding:20px 16px;border-bottom:1px solid rgba(255,255,255,.15);}
+.sidebar-logo .co{font-size:14px;font-weight:900;line-height:1.3;}
+.sidebar-logo .sub{font-size:11px;opacity:.7;margin-top:2px;}
+.sidebar-logo .badge{background:var(--gold);color:#1a237e;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-top:6px;display:inline-block;}
+nav{flex:1;padding:8px 0;}
+.nav-section{font-size:10px;font-weight:700;opacity:.5;padding:16px 16px 4px;letter-spacing:1px;text-transform:uppercase;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;font-size:13px;font-weight:500;opacity:.8;transition:all .2s;border-left:3px solid transparent;}
+.nav-item:hover{background:rgba(255,255,255,.1);opacity:1;}
+.nav-item.active{background:rgba(255,255,255,.15);opacity:1;border-left-color:var(--gold);}
+.nav-item .icon{font-size:16px;width:20px;text-align:center;}
+.sidebar-footer{padding:16px;border-top:1px solid rgba(255,255,255,.15);font-size:11px;opacity:.6;}
+
+/* MAIN */
+.main{margin-left:var(--sidebar);flex:1;display:flex;flex-direction:column;min-height:100vh;}
+.topbar{background:#fff;border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.topbar-title{font-size:18px;font-weight:800;color:var(--navy);}
+.topbar-sub{font-size:12px;color:var(--text2);}
+.topbar-right{display:flex;align-items:center;gap:12px;}
+.sync-btn{background:var(--navy);color:#fff;border:none;padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;}
+.sync-btn:hover{background:var(--navy2);}
+.sync-status{font-size:12px;color:var(--text2);}
+
+/* CONTENT */
+.content{padding:24px;flex:1;}
+.page{display:none;}
+.page.active{display:block;}
+
+/* CARDS */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+.stat-card{background:var(--card);border-radius:10px;padding:18px;border:1px solid var(--border);position:relative;overflow:hidden;}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.stat-card.green::before{background:var(--green);}
+.stat-card.red::before{background:var(--red);}
+.stat-card.navy::before{background:var(--navy);}
+.stat-card.gold::before{background:var(--gold);}
+.stat-label{font-size:12px;color:var(--text2);font-weight:600;margin-bottom:6px;}
+.stat-val{font-size:22px;font-weight:900;}
+.stat-val.green{color:var(--green);}
+.stat-val.red{color:var(--red);}
+.stat-val.navy{color:var(--navy);}
+.stat-val.gold{color:var(--gold);}
+.stat-change{font-size:11px;margin-top:4px;color:var(--text2);}
+
+/* TABLE */
+.card{background:var(--card);border-radius:10px;border:1px solid var(--border);margin-bottom:20px;}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-size:14px;font-weight:700;color:var(--navy);}
+.card-body{padding:0;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{background:#f8f9ff;padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);}
+td{padding:10px 14px;border-bottom:1px solid var(--border);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#f8f9ff;}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;}
+.badge-green{background:#e8f5e9;color:#1b5e20;}
+.badge-red{background:#ffebee;color:#b71c1c;}
+.badge-gold{background:#fff8e1;color:#f57f17;}
+.badge-blue{background:#e3f2fd;color:#0d47a1;}
+
+/* FORM */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.form-row.three{grid-template-columns:1fr 1fr 1fr;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-label{font-size:12px;font-weight:700;color:var(--text2);}
+.form-input,.form-select{border:1px solid var(--border);border-radius:6px;padding:9px 12px;font-size:13px;width:100%;outline:none;transition:border .2s;}
+.form-input:focus,.form-select:focus{border-color:var(--navy);}
+.btn{padding:9px 18px;border-radius:6px;border:none;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;}
+.btn-primary{background:var(--navy);color:#fff;}
+.btn-primary:hover{background:var(--navy2);}
+.btn-success{background:var(--green);color:#fff;}
+.btn-danger{background:var(--red);color:#fff;}
+.btn-outline{background:#fff;border:1px solid var(--border);color:var(--text);}
+.btn-sm{padding:5px 12px;font-size:12px;}
+
+/* CHART */
+.chart-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px;}
+.chart-container{position:relative;height:260px;}
+
+/* FILTERS */
+.filters{display:flex;gap:12px;margin-bottom:20px;align-items:center;flex-wrap:wrap;}
+.filter-group{display:flex;align-items:center;gap:8px;}
+.filter-label{font-size:12px;font-weight:700;color:var(--text2);}
+
+/* TABS */
+.tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px;}
+.tab{padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .2s;}
+.tab.active{color:var(--navy);border-bottom-color:var(--navy);}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:#fff;border-radius:12px;padding:24px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;}
+.modal-title{font-size:16px;font-weight:800;color:var(--navy);margin-bottom:20px;}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
+
+/* LOADING */
+.loading{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text2);}
+.spinner{width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--navy);border-radius:50%;animation:spin .8s linear infinite;margin-right:10px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* EMPTY */
+.empty{text-align:center;padding:40px;color:var(--text2);}
+.empty-icon{font-size:40px;margin-bottom:10px;}
+
+/* PRINT */
+@media print{.sidebar,.topbar,.filters,.btn,.modal-overlay{display:none!important;} .main{margin-left:0!important;} .content{padding:0!important;}}
+
+/* RESPONSIVE */
+@media(max-width:1200px){.stat-grid{grid-template-columns:repeat(2,1fr);} .chart-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <div class="co">NEW FAIR WAY TRADING</div>
+    <div class="sub">Finance & Accounts</div>
+    <div class="badge">💼 Finance System</div>
+  </div>
+  <nav>
+    <div class="nav-section">Overview</div>
+    <div class="nav-item active" onclick="showPage('dashboard')"><span class="icon">📊</span> Dashboard</div>
+    <div class="nav-section">Financial</div>
+    <div class="nav-item" onclick="showPage('pl')"><span class="icon">📈</span> Profit & Loss</div>
+    <div class="nav-item" onclick="showPage('balance')"><span class="icon">⚖️</span> Balance Sheet</div>
+    <div class="nav-item" onclick="showPage('income')"><span class="icon">💵</span> Income & Expenses</div>
+    <div class="nav-section">Assets & Liabilities</div>
+    <div class="nav-item" onclick="showPage('assets')"><span class="icon">🏗️</span> Fixed Assets</div>
+    <div class="nav-item" onclick="showPage('liabilities')"><span class="icon">📑</span> Liabilities</div>
+    <div class="nav-section">Operations</div>
+    <div class="nav-item" onclick="showPage('suppliers')"><span class="icon">🏭</span> Suppliers & Purchases</div>
+    <div class="nav-item" onclick="showPage('salaries')"><span class="icon">👥</span> Employee Salaries</div>
+    <div class="nav-item" onclick="showPage('bank')"><span class="icon">🏦</span> Bank Reconciliation</div>
+    <div class="nav-section">Customers</div>
+    <div class="nav-item" onclick="showPage('ledger')"><span class="icon">📋</span> Customer Ledger</div>
+    <div class="nav-item" onclick="showPage('aging')"><span class="icon">⏰</span> Aging Report</div>
+  </nav>
+  <div class="sidebar-footer">Connected to POS App<br>Auto-syncs sales data</div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title" id="page-title">Dashboard</div>
+      <div class="topbar-sub" id="page-sub">Financial Overview</div>
+    </div>
+    <div class="topbar-right">
+      <span class="sync-status" id="sync-status">Last sync: —</span>
+      <button class="sync-btn" onclick="syncData()">🔄 Sync from POS</button>
+      <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ Print</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="filters">
+        <div class="filter-group">
+          <span class="filter-label">Period:</span>
+          <select class="form-select" style="width:140px;" id="dash-period" onchange="loadDashboard()">
+            <option value="month">This Month</option>
+            <option value="lastmonth">Last Month</option>
+            <option value="quarter">This Quarter</option>
+            <option value="year">This Year</option>
+          </select>
+        </div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card green">
+          <div class="stat-label">💵 Total Revenue</div>
+          <div class="stat-val green" id="d-revenue">QR 0</div>
+          <div class="stat-change" id="d-revenue-sub">From sales</div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-label">💸 Total Expenses</div>
+          <div class="stat-val red" id="d-expenses">QR 0</div>
+          <div class="stat-change" id="d-expenses-sub">Purchases + Salaries + Other</div>
+        </div>
+        <div class="stat-card navy">
+          <div class="stat-label">📈 Net Profit</div>
+          <div class="stat-val navy" id="d-profit">QR 0</div>
+          <div class="stat-change" id="d-margin">Margin: 0%</div>
+        </div>
+        <div class="stat-card gold">
+          <div class="stat-label">📋 Outstanding Credit</div>
+          <div class="stat-val gold" id="d-credit">QR 0</div>
+          <div class="stat-change" id="d-credit-sub">From customers</div>
+        </div>
+      </div>
+      <div class="chart-grid">
+        <div class="card">
+          <div class="card-header"><div class="card-title">📊 Revenue vs Expenses</div></div>
+          <div style="padding:16px;"><div class="chart-container"><canvas id="chart-rev-exp"></canvas></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">💰 Income Breakdown</div></div>
+          <div style="padding:16px;"><div class="chart-container"><canvas id="chart-breakdown"></canvas></div></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div class="card">
+          <div class="card-header"><div class="card-title">🏆 Top Customers by Revenue</div></div>
+          <div class="card-body"><table><thead><tr><th>Customer</th><th>Sales</th><th>Credit</th></tr></thead><tbody id="top-customers"></tbody></table></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">📦 Top Products by Revenue</div></div>
+          <div class="card-body"><table><thead><tr><th>Product</th><th>Qty</th><th>Revenue</th></tr></thead><tbody id="top-products"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROFIT & LOSS -->
+    <div class="page" id="page-pl">
+      <div class="filters">
+        <div class="filter-group"><span class="filter-label">From:</span><input type="date" class="form-input" id="pl-from" style="width:150px;"></div>
+        <div class="filter-group"><span class="filter-label">To:</span><input type="date" class="form-input" id="pl-to" style="width:150px;"></div>
+        <button class="btn btn-primary btn-sm" onclick="loadPL()">Generate</button>
+        <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ Print</button>
+      </div>
+      <div id="pl-content"></div>
+    </div>
+
+    <!-- BALANCE SHEET -->
+    <div class="page" id="page-balance">
+      <div class="filters">
+        <div class="filter-group"><span class="filter-label">As of:</span><input type="date" class="form-input" id="bs-date" style="width:150px;"></div>
+        <button class="btn btn-primary btn-sm" onclick="loadBalanceSheet()">Generate</button>
+        <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ Print</button>
+      </div>
+      <div id="bs-content"></div>
+    </div>
+
+    <!-- INCOME & EXPENSES -->
+    <div class="page" id="page-income">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div class="tabs">
+          <div class="tab active" onclick="switchIncomeTab('income')">💵 Income</div>
+          <div class="tab" onclick="switchIncomeTab('expense')">💸 Expenses</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openAddTransModal()">+ Add Transaction</button>
+      </div>
+      <div class="filters">
+        <div class="filter-group"><span class="filter-label">From:</span><input type="date" class="form-input" id="inc-from" style="width:150px;"></div>
+        <div class="filter-group"><span class="filter-label">To:</span><input type="date" class="form-input" id="inc-to" style="width:150px;"></div>
+        <button class="btn btn-outline btn-sm" onclick="loadTransactions()">Filter</button>
+      </div>
+      <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);">
+        <div class="stat-card green"><div class="stat-label">Total Income</div><div class="stat-val green" id="inc-total">QR 0</div></div>
+        <div class="stat-card red"><div class="stat-label">Total Expenses</div><div class="stat-val red" id="exp-total">QR 0</div></div>
+        <div class="stat-card navy"><div class="stat-label">Net</div><div class="stat-val navy" id="net-total">QR 0</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title" id="trans-title">Transactions</div></div>
+        <div class="card-body"><table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Type</th><th>Amount</th><th>Action</th></tr></thead><tbody id="trans-list"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- SUPPLIERS -->
+    <div class="page" id="page-suppliers">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div class="tabs">
+          <div class="tab active" onclick="switchSupplierTab('list')">🏭 Suppliers</div>
+          <div class="tab" onclick="switchSupplierTab('purchases')">🛒 Purchases</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-outline btn-sm" onclick="openAddSupplierModal()">+ Add Supplier</button>
+          <button class="btn btn-primary btn-sm" onclick="openAddPurchaseModal()">+ Add Purchase</button>
+        </div>
+      </div>
+      <div class="card" id="supplier-table-card">
+        <div class="card-header"><div class="card-title">Supplier List</div></div>
+        <div class="card-body"><table><thead><tr><th>Supplier</th><th>Phone</th><th>Total Purchases</th><th>Balance Due</th><th>Action</th></tr></thead><tbody id="supplier-list"></tbody></table></div>
+      </div>
+      <div class="card" id="purchase-table-card" style="display:none;">
+        <div class="card-header"><div class="card-title">Purchase History</div></div>
+        <div class="card-body"><table><thead><tr><th>Date</th><th>Supplier</th><th>Description</th><th>Amount</th><th>Status</th></tr></thead><tbody id="purchase-list"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- SALARIES -->
+    <div class="page" id="page-salaries">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div class="tabs">
+          <div class="tab active" onclick="switchSalaryTab('employees')">👤 Employees</div>
+          <div class="tab" onclick="switchSalaryTab('payroll')">💰 Payroll</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-outline btn-sm" onclick="openAddEmployeeModal()">+ Add Employee</button>
+          <button class="btn btn-primary btn-sm" onclick="openPayrollModal()">💰 Run Payroll</button>
+        </div>
+      </div>
+      <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);">
+        <div class="stat-card navy"><div class="stat-label">Total Employees</div><div class="stat-val navy" id="emp-count">0</div></div>
+        <div class="stat-card red"><div class="stat-label">Monthly Salary Cost</div><div class="stat-val red" id="salary-total">QR 0</div></div>
+        <div class="stat-card gold"><div class="stat-label">This Month Paid</div><div class="stat-val gold" id="salary-paid">QR 0</div></div>
+      </div>
+      <div class="card" id="employee-table-card">
+        <div class="card-header"><div class="card-title">Employee List</div></div>
+        <div class="card-body"><table><thead><tr><th>Name</th><th>Position</th><th>Basic Salary</th><th>Status</th><th>Action</th></tr></thead><tbody id="employee-list"></tbody></table></div>
+      </div>
+      <div class="card" id="payroll-table-card" style="display:none;">
+        <div class="card-header"><div class="card-title">Payroll History</div></div>
+        <div class="card-body"><table><thead><tr><th>Month</th><th>Employee</th><th>Basic</th><th>Allowance</th><th>Deduction</th><th>Net Pay</th><th>Status</th></tr></thead><tbody id="payroll-list"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- BANK RECONCILIATION -->
+    <div class="page" id="page-bank">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div class="tabs">
+          <div class="tab active" onclick="switchBankTab('accounts')">🏦 Accounts</div>
+          <div class="tab" onclick="switchBankTab('transactions')">📋 Transactions</div>
+          <div class="tab" onclick="switchBankTab('reconcile')">✅ Reconcile</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openAddBankTxModal()">+ Add Transaction</button>
+      </div>
+      <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);">
+        <div class="stat-card green"><div class="stat-label">Total Cash In</div><div class="stat-val green" id="bank-in">QR 0</div></div>
+        <div class="stat-card red"><div class="stat-label">Total Cash Out</div><div class="stat-val red" id="bank-out">QR 0</div></div>
+        <div class="stat-card navy"><div class="stat-label">Current Balance</div><div class="stat-val navy" id="bank-bal">QR 0</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Bank Transactions</div></div>
+        <div class="card-body"><table><thead><tr><th>Date</th><th>Description</th><th>Reference</th><th>In</th><th>Out</th><th>Balance</th><th>Reconciled</th></tr></thead><tbody id="bank-list"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- CUSTOMER LEDGER -->
+    <div class="page" id="page-ledger">
+      <div class="filters">
+        <div class="filter-group"><span class="filter-label">Customer:</span>
+          <select class="form-select" id="ledger-customer" style="width:200px;" onchange="loadLedger()">
+            <option value="">All Customers</option>
+          </select>
+        </div>
+        <div class="filter-group"><span class="filter-label">From:</span><input type="date" class="form-input" id="ledger-from" style="width:150px;"></div>
+        <div class="filter-group"><span class="filter-label">To:</span><input type="date" class="form-input" id="ledger-to" style="width:150px;"></div>
+        <button class="btn btn-outline btn-sm" onclick="loadLedger()">Filter</button>
+      </div>
+      <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);">
+        <div class="stat-card green"><div class="stat-label">Total Sales</div><div class="stat-val green" id="led-sales">QR 0</div></div>
+        <div class="stat-card gold"><div class="stat-label">Total Collections</div><div class="stat-val gold" id="led-collect">QR 0</div></div>
+        <div class="stat-card red"><div class="stat-label">Outstanding Balance</div><div class="stat-val red" id="led-balance">QR 0</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Customer Ledger</div></div>
+        <div class="card-body"><table><thead><tr><th>Date</th><th>Customer</th><th>Invoice #</th><th>Debit (Sales)</th><th>Credit (Payment)</th><th>Balance</th></tr></thead><tbody id="ledger-list"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- AGING REPORT -->
+    <div class="page" id="page-aging">
+      <div class="filters">
+        <div class="filter-group"><span class="filter-label">As of:</span><input type="date" class="form-input" id="aging-date" style="width:150px;"></div>
+        <button class="btn btn-primary btn-sm" onclick="loadAging()">Generate</button>
+        <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ Print</button>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card green"><div class="stat-label">Current (0-30 days)</div><div class="stat-val green" id="age-0">QR 0</div></div>
+        <div class="stat-card gold"><div class="stat-label">31-60 days</div><div class="stat-val gold" id="age-31">QR 0</div></div>
+        <div class="stat-card red"><div class="stat-label">61-90 days</div><div class="stat-val red" id="age-61">QR 0</div></div>
+        <div class="stat-card red"><div class="stat-label">90+ days</div><div class="stat-val red" id="age-90">QR 0</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Customer Aging Report</div></div>
+        <div class="card-body"><table><thead><tr><th>Customer</th><th>Total Due</th><th>0-30 days</th><th>31-60 days</th><th>61-90 days</th><th>90+ days</th><th>Status</th></tr></thead><tbody id="aging-list"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- FIXED ASSETS -->
+    <div class="page" id="page-assets">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div class="tabs">
+          <div class="tab active" onclick="switchAssetTab('list')">🏗️ Assets</div>
+          <div class="tab" onclick="switchAssetTab('depreciation')">📉 Depreciation</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openAddAssetModal()">+ Add Asset</button>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card navy"><div class="stat-label">🚛 Vehicles / Trucks</div><div class="stat-val navy" id="ast-vehicle">QR 0</div></div>
+        <div class="stat-card green"><div class="stat-label">🛠️ Equipment & Tools</div><div class="stat-val green" id="ast-equipment">QR 0</div></div>
+        <div class="stat-card gold"><div class="stat-label">🪑 Office Furniture</div><div class="stat-val gold" id="ast-furniture">QR 0</div></div>
+        <div class="stat-card navy"><div class="stat-label">💰 Total Asset Value</div><div class="stat-val navy" id="ast-total">QR 0</div></div>
+      </div>
+      <div class="card" id="asset-list-card">
+        <div class="card-header">
+          <div class="card-title">Fixed Assets Register</div>
+          <select class="form-select" id="asset-filter" style="width:160px;" onchange="loadAssets()">
+            <option value="">All Categories</option>
+            <option value="Vehicle">Vehicle / Truck</option>
+            <option value="Equipment">Equipment & Tools</option>
+            <option value="Furniture">Office Furniture</option>
+            <option value="Cash">Cash & Bank</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="card-body">
+          <table>
+            <thead><tr><th>Asset Name</th><th>Category</th><th>Purchase Date</th><th>Purchase Value</th><th>Current Value</th><th>Depreciation</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="asset-list"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card" id="depreciation-card" style="display:none;">
+        <div class="card-header"><div class="card-title">Depreciation Schedule</div></div>
+        <div class="card-body">
+          <table>
+            <thead><tr><th>Asset</th><th>Purchase Value</th><th>Rate %/yr</th><th>This Year</th><th>Accumulated</th><th>Net Book Value</th></tr></thead>
+            <tbody id="depreciation-list"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- LIABILITIES -->
+    <div class="page" id="page-liabilities">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div class="tabs">
+          <div class="tab active" onclick="switchLiabTab('payables')">📑 Supplier Payables</div>
+          <div class="tab" onclick="switchLiabTab('drawings')">💸 Owner Drawings</div>
+        </div>
+        <button class="btn btn-primary btn-sm" id="liab-add-btn" onclick="openAddDrawingModal()">+ Add Drawing</button>
+      </div>
+      <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);">
+        <div class="stat-card red"><div class="stat-label">📑 Supplier Payables</div><div class="stat-val red" id="liab-payables">QR 0</div></div>
+        <div class="stat-card gold"><div class="stat-label">💸 Owner Drawings</div><div class="stat-val gold" id="liab-drawings">QR 0</div></div>
+        <div class="stat-card navy"><div class="stat-label">📊 Total Liabilities</div><div class="stat-val navy" id="liab-total">QR 0</div></div>
+      </div>
+      <div class="card" id="payables-card">
+        <div class="card-header"><div class="card-title">Supplier Payables (Pending Purchases)</div></div>
+        <div class="card-body">
+          <table>
+            <thead><tr><th>Date</th><th>Supplier</th><th>Description</th><th>Amount</th><th>Due Date</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="payables-list"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card" id="drawings-card" style="display:none;">
+        <div class="card-header"><div class="card-title">Owner Drawings</div></div>
+        <div class="card-body">
+          <table>
+            <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Action</th></tr></thead>
+            <tbody id="drawings-list"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-transaction">
+  <div class="modal">
+    <div class="modal-title" id="trans-modal-title">Add Transaction</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="t-date"></div>
+      <div class="form-group"><label class="form-label">Type</label>
+        <select class="form-select" id="t-type">
+          <option value="income">Income</option>
+          <option value="expense">Expense</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Category</label>
+        <select class="form-select" id="t-category">
+          <option value="Sales">Sales</option>
+          <option value="Purchase">Purchase</option>
+          <option value="Salary">Salary</option>
+          <option value="Rent">Rent</option>
+          <option value="Transport">Transport</option>
+          <option value="Utilities">Utilities</option>
+          <option value="Other Income">Other Income</option>
+          <option value="Other Expense">Other Expense</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Amount (QR)</label><input type="number" class="form-input" id="t-amount" placeholder="0.00"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:16px;"><label class="form-label">Description</label><input type="text" class="form-input" id="t-desc" placeholder="Enter description"></div>
+    <div class="form-group" style="margin-bottom:16px;"><label class="form-label">Reference / Notes</label><input type="text" class="form-input" id="t-ref" placeholder="Invoice #, receipt, etc."></div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-transaction')">Cancel</button><button class="btn btn-primary" onclick="saveTransaction()">Save</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-supplier">
+  <div class="modal">
+    <div class="modal-title">Add Supplier</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Supplier Name</label><input type="text" class="form-input" id="sup-name" placeholder="Name"></div>
+      <div class="form-group"><label class="form-label">Phone</label><input type="text" class="form-input" id="sup-phone" placeholder="+974..."></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Email</label><input type="text" class="form-input" id="sup-email"></div>
+      <div class="form-group"><label class="form-label">Category</label>
+        <select class="form-select" id="sup-cat">
+          <option>FMCG</option><option>Beverages</option><option>Snacks</option><option>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:16px;"><label class="form-label">Address</label><input type="text" class="form-input" id="sup-addr"></div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-supplier')">Cancel</button><button class="btn btn-primary" onclick="saveSupplier()">Save</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-purchase">
+  <div class="modal">
+    <div class="modal-title">Add Purchase</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="pur-date"></div>
+      <div class="form-group"><label class="form-label">Supplier</label><select class="form-select" id="pur-supplier"><option value="">Select supplier</option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Description</label><input type="text" class="form-input" id="pur-desc" placeholder="Items purchased"></div>
+      <div class="form-group"><label class="form-label">Amount (QR)</label><input type="number" class="form-input" id="pur-amount" placeholder="0.00"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Invoice #</label><input type="text" class="form-input" id="pur-inv"></div>
+      <div class="form-group"><label class="form-label">Status</label>
+        <select class="form-select" id="pur-status"><option value="paid">Paid</option><option value="pending">Pending</option><option value="partial">Partial</option></select>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-purchase')">Cancel</button><button class="btn btn-primary" onclick="savePurchase()">Save</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-employee">
+  <div class="modal">
+    <div class="modal-title">Add Employee</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Full Name</label><input type="text" class="form-input" id="emp-name" placeholder="Name"></div>
+      <div class="form-group"><label class="form-label">Position</label><input type="text" class="form-input" id="emp-pos" placeholder="e.g. Driver, Salesman"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Basic Salary (QR)</label><input type="number" class="form-input" id="emp-salary" placeholder="0"></div>
+      <div class="form-group"><label class="form-label">Phone</label><input type="text" class="form-input" id="emp-phone"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Join Date</label><input type="date" class="form-input" id="emp-join"></div>
+      <div class="form-group"><label class="form-label">Status</label>
+        <select class="form-select" id="emp-status"><option value="active">Active</option><option value="inactive">Inactive</option></select>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-employee')">Cancel</button><button class="btn btn-primary" onclick="saveEmployee()">Save</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-payroll">
+  <div class="modal">
+    <div class="modal-title">Run Payroll</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Month</label><input type="month" class="form-input" id="pay-month"></div>
+      <div class="form-group"><label class="form-label">Employee</label><select class="form-select" id="pay-emp"><option value="all">All Employees</option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Allowance (QR)</label><input type="number" class="form-input" id="pay-allowance" value="0"></div>
+      <div class="form-group"><label class="form-label">Deduction (QR)</label><input type="number" class="form-input" id="pay-deduction" value="0"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:16px;"><label class="form-label">Notes</label><input type="text" class="form-input" id="pay-notes"></div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-payroll')">Cancel</button><button class="btn btn-primary" onclick="savePayroll()">Process Payroll</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-asset">
+  <div class="modal">
+    <div class="modal-title" id="asset-modal-title">Add Fixed Asset</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Asset Name</label><input type="text" class="form-input" id="ast-name" placeholder="e.g. Toyota Hiace Truck"></div>
+      <div class="form-group"><label class="form-label">Category</label>
+        <select class="form-select" id="ast-category">
+          <option value="Vehicle">🚛 Vehicle / Truck</option>
+          <option value="Equipment">🛠️ Equipment & Tools</option>
+          <option value="Furniture">🪑 Office Furniture</option>
+          <option value="Cash">💰 Cash & Bank</option>
+          <option value="Other">📦 Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Purchase Date</label><input type="date" class="form-input" id="ast-date"></div>
+      <div class="form-group"><label class="form-label">Purchase Value (QR)</label><input type="number" class="form-input" id="ast-value" placeholder="0.00"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Depreciation Rate (%/year)</label><input type="number" class="form-input" id="ast-dep-rate" placeholder="e.g. 20" value="20"></div>
+      <div class="form-group"><label class="form-label">Status</label>
+        <select class="form-select" id="ast-status">
+          <option value="active">Active</option>
+          <option value="sold">Sold</option>
+          <option value="disposed">Disposed</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:16px;"><label class="form-label">Description / Notes</label><input type="text" class="form-input" id="ast-notes" placeholder="Plate number, serial, etc."></div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-asset')">Cancel</button><button class="btn btn-primary" onclick="saveAsset()">Save Asset</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-drawing">
+  <div class="modal">
+    <div class="modal-title">Add Owner Drawing</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="drw-date"></div>
+      <div class="form-group"><label class="form-label">Amount (QR)</label><input type="number" class="form-input" id="drw-amount" placeholder="0.00"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:16px;"><label class="form-label">Description</label><input type="text" class="form-input" id="drw-desc" placeholder="e.g. Personal withdrawal, owner salary"></div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-drawing')">Cancel</button><button class="btn btn-primary" onclick="saveDrawing()">Save</button></div>
+  </div>
+</div>
+  <div class="modal">
+    <div class="modal-title">Add Bank Transaction</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="bk-date"></div>
+      <div class="form-group"><label class="form-label">Type</label>
+        <select class="form-select" id="bk-type"><option value="in">Cash In</option><option value="out">Cash Out</option></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Amount (QR)</label><input type="number" class="form-input" id="bk-amount" placeholder="0.00"></div>
+      <div class="form-group"><label class="form-label">Reference</label><input type="text" class="form-input" id="bk-ref" placeholder="Cheque #, transfer ref"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:16px;"><label class="form-label">Description</label><input type="text" class="form-input" id="bk-desc"></div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-bank-tx')">Cancel</button><button class="btn btn-primary" onclick="saveBankTx()">Save</button></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// SUPABASE — same as POS app
+// ═══════════════════════════════════════════
+const SUPABASE_URL = 'https://copwoaaquhlprzydpseh.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvcHdvYWFxdWhscHJ6eWRwc2VoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NjAyNzQsImV4cCI6MjA4OTIzNjI3NH0.9uFFf7ejGn6xb2U5tiKJXvMyu1XKIZXbubG7B8kWF2g';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ═══════════════════════════════════════════
+// LOCAL STORAGE KEYS
+// ═══════════════════════════════════════════
+const LS = {
+  transactions: 'fin_transactions',
+  suppliers: 'fin_suppliers',
+  purchases: 'fin_purchases',
+  employees: 'fin_employees',
+  payroll: 'fin_payroll',
+  bank: 'fin_bank',
+};
+
+function lsGet(key) { try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { return []; } }
+function lsSet(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
+
+// ═══════════════════════════════════════════
+// POS SYNC DATA (from Supabase)
+// ═══════════════════════════════════════════
+let posData = { invoices: [], customers: [], products: [], invoice_items: [], expenses: [] };
+
+async function syncData() {
+  document.getElementById('sync-status').textContent = 'Syncing...';
+  try {
+    const [inv, cust, prod, items, exp] = await Promise.all([
+      sb.from('invoices').select('*'),
+      sb.from('customers').select('*'),
+      sb.from('products').select('*'),
+      sb.from('invoice_items').select('*'),
+      sb.from('expenses').select('*'),
+    ]);
+    posData.invoices = inv.data || [];
+    posData.customers = cust.data || [];
+    posData.products = prod.data || [];
+    posData.invoice_items = items.data || [];
+    posData.expenses = exp.data || [];
+    document.getElementById('sync-status').textContent = 'Last sync: ' + new Date().toLocaleTimeString();
+    // Reload current page
+    const activePage = document.querySelector('.page.active');
+    if (activePage) loadCurrentPage(activePage.id.replace('page-', ''));
+  } catch(e) {
+    document.getElementById('sync-status').textContent = 'Sync failed';
+    console.error(e);
+  }
+}
+
+function loadCurrentPage(page) {
+  if (page === 'dashboard') loadDashboard();
+  else if (page === 'pl') loadPL();
+  else if (page === 'balance') loadBalanceSheet();
+  else if (page === 'income') loadTransactions();
+  else if (page === 'suppliers') loadSuppliers();
+  else if (page === 'salaries') loadEmployees();
+  else if (page === 'assets') loadAssets();
+  else if (page === 'liabilities') loadPayables();
+  else if (page === 'bank') loadBank();
+  else if (page === 'ledger') loadLedger();
+  else if (page === 'aging') loadAging();
+}
+
+// ═══════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════
+const pageTitles = {
+  dashboard: ['Dashboard', 'Financial Overview'],
+  pl: ['Profit & Loss', 'Income statement for period'],
+  balance: ['Balance Sheet', 'Assets, liabilities and equity'],
+  income: ['Income & Expenses', 'All transactions'],
+  assets: ['Fixed Assets', 'Vehicles, equipment, furniture & more'],
+  liabilities: ['Liabilities', 'Supplier payables & owner drawings'],
+  suppliers: ['Suppliers & Purchases', 'Manage suppliers and purchase orders'],
+  salaries: ['Employee Salaries', 'Payroll management'],
+  bank: ['Bank Reconciliation', 'Track cash flow'],
+  ledger: ['Customer Ledger', 'Customer account statements'],
+  aging: ['Aging Report', 'Outstanding receivables analysis'],
+};
+
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  event.currentTarget.classList.add('active');
+  const [title, sub] = pageTitles[page] || [page, ''];
+  document.getElementById('page-title').textContent = title;
+  document.getElementById('page-sub').textContent = sub;
+  loadCurrentPage(page);
+}
+
+// ═══════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════
+function fmt(n) { return 'QR ' + parseFloat(n || 0).toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function today() { return new Date().toISOString().split('T')[0]; }
+function monthStart() { const d = new Date(); d.setDate(1); return d.toISOString().split('T')[0]; }
+function lastMonthRange() {
+  const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1);
+  const from = d.toISOString().split('T')[0];
+  const to = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
+  return { from, to };
+}
+function getDateRange(period) {
+  const now = new Date();
+  if (period === 'month') return { from: monthStart(), to: today() };
+  if (period === 'lastmonth') return lastMonthRange();
+  if (period === 'quarter') {
+    const qStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+    return { from: qStart.toISOString().split('T')[0], to: today() };
+  }
+  return { from: `${now.getFullYear()}-01-01`, to: today() };
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+
+// ═══════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════
+let chartRevExp = null, chartBreakdown = null;
+
+function loadDashboard() {
+  const period = document.getElementById('dash-period').value;
+  const { from, to } = getDateRange(period);
+  const invs = posData.invoices.filter(i => i.date >= from && i.date <= to);
+  const revenue = invs.reduce((a, i) => a + (i.total_amount || 0), 0);
+  const creditTotal = posData.customers.reduce((a, c) => a + (c.credit_balance || 0), 0);
+  // Expenses from finance + POS expenses
+  const finExp = lsGet(LS.transactions).filter(t => t.type === 'expense' && t.date >= from && t.date <= to).reduce((a, t) => a + t.amount, 0);
+  const posExp = posData.expenses.filter(e => e.date >= from && e.date <= to).reduce((a, e) => a + (e.amount || 0), 0);
+  const salaries = lsGet(LS.payroll).filter(p => p.month >= from.slice(0, 7)).reduce((a, p) => a + p.net_pay, 0);
+  const purchases = lsGet(LS.purchases).filter(p => p.date >= from && p.date <= to).reduce((a, p) => a + p.amount, 0);
+  const totalExp = finExp + posExp + salaries + purchases;
+  const profit = revenue - totalExp;
+
+  document.getElementById('d-revenue').textContent = fmt(revenue);
+  document.getElementById('d-revenue-sub').textContent = `${invs.length} invoices`;
+  document.getElementById('d-expenses').textContent = fmt(totalExp);
+  document.getElementById('d-profit').textContent = fmt(profit);
+  document.getElementById('d-profit').style.color = profit >= 0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('d-margin').textContent = revenue > 0 ? `Margin: ${((profit / revenue) * 100).toFixed(1)}%` : 'Margin: 0%';
+  document.getElementById('d-credit').textContent = fmt(creditTotal);
+
+  // Top customers
+  const custMap = {};
+  posData.customers.forEach(c => custMap[c.customer_id] = c);
+  const custRev = {};
+  invs.forEach(i => {
+    const id = i.customer_id;
+    if (!custRev[id]) custRev[id] = 0;
+    custRev[id] += i.total_amount || 0;
+  });
+  const topCust = Object.entries(custRev).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  document.getElementById('top-customers').innerHTML = topCust.map(([id, rev]) => {
+    const c = custMap[id];
+    return `<tr><td>${c?.name || 'Walk-in'}</td><td>${fmt(rev)}</td><td>${fmt(c?.credit_balance || 0)}</td></tr>`;
+  }).join('') || '<tr><td colspan="3" style="text-align:center;color:#999;">No data</td></tr>';
+
+  // Top products
+  const prodMap = {};
+  posData.products.forEach(p => prodMap[p.product_id] = p);
+  const invIds = new Set(invs.map(i => i.invoice_id));
+  const prodRev = {};
+  posData.invoice_items.filter(it => invIds.has(it.invoice_id)).forEach(it => {
+    if (!prodRev[it.product_id]) prodRev[it.product_id] = { qty: 0, rev: 0 };
+    prodRev[it.product_id].qty += it.quantity || 0;
+    prodRev[it.product_id].rev += it.total || 0;
+  });
+  const topProd = Object.entries(prodRev).sort((a, b) => b[1].rev - a[1].rev).slice(0, 5);
+  document.getElementById('top-products').innerHTML = topProd.map(([id, d]) => {
+    const p = prodMap[id];
+    return `<tr><td>${p?.name || '-'}</td><td>${d.qty}</td><td>${fmt(d.rev)}</td></tr>`;
+  }).join('') || '<tr><td colspan="3" style="text-align:center;color:#999;">No data</td></tr>';
+
+  // Charts
+  buildRevExpChart(from, to);
+  buildBreakdownChart(revenue, totalExp, purchases, salaries, posExp + finExp);
+}
+
+function buildRevExpChart(from, to) {
+  const ctx = document.getElementById('chart-rev-exp').getContext('2d');
+  if (chartRevExp) chartRevExp.destroy();
+  // Group by month
+  const months = {};
+  posData.invoices.filter(i => i.date >= from && i.date <= to).forEach(i => {
+    const m = i.date.slice(0, 7);
+    if (!months[m]) months[m] = { rev: 0, exp: 0 };
+    months[m].rev += i.total_amount || 0;
+  });
+  lsGet(LS.transactions).filter(t => t.date >= from && t.date <= to && t.type === 'expense').forEach(t => {
+    const m = t.date.slice(0, 7);
+    if (!months[m]) months[m] = { rev: 0, exp: 0 };
+    months[m].exp += t.amount || 0;
+  });
+  const labels = Object.keys(months).sort();
+  chartRevExp = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels.map(l => { const d = new Date(l + '-01'); return d.toLocaleString('default', { month: 'short', year: '2-digit' }); }),
+      datasets: [
+        { label: 'Revenue', data: labels.map(l => months[l].rev), backgroundColor: '#4caf5088' },
+        { label: 'Expenses', data: labels.map(l => months[l].exp), backgroundColor: '#f4433688' },
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+  });
+}
+
+function buildBreakdownChart(revenue, totalExp, purchases, salaries, other) {
+  const ctx = document.getElementById('chart-breakdown').getContext('2d');
+  if (chartBreakdown) chartBreakdown.destroy();
+  chartBreakdown = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Revenue', 'Purchases', 'Salaries', 'Other Exp'],
+      datasets: [{ data: [revenue, purchases, salaries, other], backgroundColor: ['#4caf50', '#f44336', '#ff9800', '#9c27b0'] }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+  });
+}
+
+// ═══════════════════════════════════════════
+// PROFIT & LOSS
+// ═══════════════════════════════════════════
+function loadPL() {
+  const from = document.getElementById('pl-from').value || monthStart();
+  const to = document.getElementById('pl-to').value || today();
+  const invs = posData.invoices.filter(i => i.date >= from && i.date <= to);
+  const revenue = invs.reduce((a, i) => a + (i.total_amount || 0), 0);
+  const cashSales = invs.filter(i => i.payment_type === 'cash').reduce((a, i) => a + (i.total_amount || 0), 0);
+  const creditSales = invs.filter(i => i.payment_type === 'credit').reduce((a, i) => a + (i.total_amount || 0), 0);
+  const chequeSales = invs.filter(i => i.payment_type === 'cheque').reduce((a, i) => a + (i.total_amount || 0), 0);
+  const purchases = lsGet(LS.purchases).filter(p => p.date >= from && p.date <= to).reduce((a, p) => a + p.amount, 0);
+  const grossProfit = revenue - purchases;
+  const salaries = lsGet(LS.payroll).filter(p => p.month >= from.slice(0, 7) && p.month <= to.slice(0, 7)).reduce((a, p) => a + p.net_pay, 0);
+  const finExp = lsGet(LS.transactions).filter(t => t.type === 'expense' && t.date >= from && t.date <= to);
+  const posExp = posData.expenses.filter(e => e.date >= from && e.date <= to);
+  const expByCategory = {};
+  [...finExp, ...posExp.map(e => ({ category: e.category || 'Other', amount: e.amount }))].forEach(e => {
+    expByCategory[e.category] = (expByCategory[e.category] || 0) + e.amount;
+  });
+  const totalOpExp = Object.values(expByCategory).reduce((a, v) => a + v, 0) + salaries;
+  const netProfit = grossProfit - totalOpExp;
+
+  document.getElementById('pl-content').innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Profit & Loss Statement</div>
+        <div style="font-size:12px;color:var(--text2);">${from} to ${to}</div>
+      </div>
+      <div style="padding:20px;max-width:700px;margin:0 auto;">
+        <table style="font-size:14px;">
+          <tr><td colspan="2" style="font-weight:800;font-size:15px;color:var(--navy);padding:10px 0;border-bottom:2px solid var(--navy);">INCOME</td></tr>
+          <tr><td style="padding:8px 0;">Cash Sales</td><td style="text-align:right;">${fmt(cashSales)}</td></tr>
+          <tr><td style="padding:8px 0;">Credit Sales</td><td style="text-align:right;">${fmt(creditSales)}</td></tr>
+          <tr><td style="padding:8px 0;">Cheque Sales</td><td style="text-align:right;">${fmt(chequeSales)}</td></tr>
+          <tr style="font-weight:700;background:#e8f5e9;"><td style="padding:8px;">Total Revenue</td><td style="text-align:right;padding:8px;">${fmt(revenue)}</td></tr>
+          <tr><td colspan="2" style="padding-top:16px;"></td></tr>
+          <tr><td colspan="2" style="font-weight:800;font-size:15px;color:var(--red);padding:10px 0;border-bottom:2px solid var(--red);">COST OF GOODS SOLD</td></tr>
+          <tr><td style="padding:8px 0;">Purchases</td><td style="text-align:right;">${fmt(purchases)}</td></tr>
+          <tr style="font-weight:700;background:#fff8f8;"><td style="padding:8px;">Gross Profit</td><td style="text-align:right;padding:8px;color:${grossProfit >= 0 ? 'var(--green)' : 'var(--red)'};">${fmt(grossProfit)}</td></tr>
+          <tr><td colspan="2" style="padding-top:16px;"></td></tr>
+          <tr><td colspan="2" style="font-weight:800;font-size:15px;color:var(--red);padding:10px 0;border-bottom:2px solid var(--red);">OPERATING EXPENSES</td></tr>
+          <tr><td style="padding:8px 0;">Salaries</td><td style="text-align:right;">${fmt(salaries)}</td></tr>
+          ${Object.entries(expByCategory).map(([cat, amt]) => `<tr><td style="padding:8px 0;">${cat}</td><td style="text-align:right;">${fmt(amt)}</td></tr>`).join('')}
+          <tr style="font-weight:700;background:#fff8f8;"><td style="padding:8px;">Total Operating Expenses</td><td style="text-align:right;padding:8px;">${fmt(totalOpExp)}</td></tr>
+          <tr><td colspan="2" style="padding:8px 0;border-top:2px solid var(--navy);"></td></tr>
+          <tr style="font-weight:900;font-size:16px;background:${netProfit >= 0 ? '#e8f5e9' : '#ffebee'};"><td style="padding:12px;">NET PROFIT / LOSS</td><td style="text-align:right;padding:12px;color:${netProfit >= 0 ? 'var(--green)' : 'var(--red)'};">${fmt(netProfit)}</td></tr>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════
+// BALANCE SHEET
+// ═══════════════════════════════════════════
+function loadBalanceSheet() {
+  const asOf = document.getElementById('bs-date').value || today();
+  const invs = posData.invoices.filter(i => i.date <= asOf);
+  const totalRevenue = invs.reduce((a, i) => a + (i.total_amount || 0), 0);
+  const totalCredit = posData.customers.reduce((a, c) => a + (c.credit_balance || 0), 0);
+  const cashSales = invs.filter(i => i.payment_type === 'cash' || i.payment_type === 'cheque').reduce((a, i) => a + (i.total_amount || 0), 0);
+  const totalPurchases = lsGet(LS.purchases).filter(p => p.date <= asOf).reduce((a, p) => a + p.amount, 0);
+  const totalSalaries = lsGet(LS.payroll).reduce((a, p) => a + p.net_pay, 0);
+  const totalExp = lsGet(LS.transactions).filter(t => t.type === 'expense' && t.date <= asOf).reduce((a, t) => a + t.amount, 0);
+  const bankIn = lsGet(LS.bank).filter(b => b.type === 'in' && b.date <= asOf).reduce((a, b) => a + b.amount, 0);
+  const bankOut = lsGet(LS.bank).filter(b => b.type === 'out' && b.date <= asOf).reduce((a, b) => a + b.amount, 0);
+  const cashBalance = cashSales + bankIn - bankOut - totalPurchases - totalSalaries - totalExp;
+  const totalAssets = cashBalance + totalCredit;
+  const totalLiabilities = lsGet(LS.purchases).filter(p => p.status === 'pending').reduce((a, p) => a + p.amount, 0);
+  const equity = totalAssets - totalLiabilities;
+
+  const assets = lsGet('fin_assets').filter(a => a.status === 'active');
+  const totalFixedAssets = assets.reduce((a, ast) => a + calcCurrentValue(ast), 0);
+  const drawings = lsGet('fin_drawings').reduce((a, d) => a + d.amount, 0);
+
+  document.getElementById('bs-content').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      <div class="card">
+        <div class="card-header"><div class="card-title" style="color:var(--green);">ASSETS</div></div>
+        <div style="padding:20px;">
+          <table style="font-size:13px;">
+            <tr><td colspan="2" style="font-weight:700;color:var(--text2);padding-bottom:8px;">Current Assets</td></tr>
+            <tr><td style="padding:6px 0;">Cash & Bank</td><td style="text-align:right;">${fmt(cashBalance)}</td></tr>
+            <tr><td style="padding:6px 0;">Accounts Receivable (Credit)</td><td style="text-align:right;">${fmt(totalCredit)}</td></tr>
+            <tr><td colspan="2" style="font-weight:700;color:var(--text2);padding:12px 0 8px;">Fixed Assets</td></tr>
+            ${assets.map(a => `<tr><td style="padding:4px 0;">${ASSET_ICONS[a.category]||'📦'} ${a.name}</td><td style="text-align:right;">${fmt(calcCurrentValue(a))}</td></tr>`).join('')}
+            <tr style="font-weight:800;border-top:2px solid var(--green);"><td style="padding:10px 0;">TOTAL ASSETS</td><td style="text-align:right;color:var(--green);">${fmt(totalAssets + totalFixedAssets)}</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title" style="color:var(--red);">LIABILITIES & EQUITY</div></div>
+        <div style="padding:20px;">
+          <table style="font-size:13px;">
+            <tr><td colspan="2" style="font-weight:700;color:var(--text2);padding-bottom:8px;">Current Liabilities</td></tr>
+            <tr><td style="padding:6px 0;">Accounts Payable (Suppliers)</td><td style="text-align:right;">${fmt(totalLiabilities)}</td></tr>
+            <tr><td colspan="2" style="font-weight:700;color:var(--text2);padding:12px 0 8px;">Equity</td></tr>
+            <tr><td style="padding:6px 0;">Owner's Equity</td><td style="text-align:right;">${fmt(equity + totalFixedAssets)}</td></tr>
+            <tr><td style="padding:6px 0;color:var(--gold);">Less: Owner Drawings</td><td style="text-align:right;color:var(--gold);">- ${fmt(drawings)}</td></tr>
+            <tr style="font-weight:800;border-top:2px solid var(--red);"><td style="padding:10px 0;">TOTAL LIABILITIES + EQUITY</td><td style="text-align:right;color:var(--navy);">${fmt(totalAssets + totalFixedAssets)}</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════
+// INCOME & EXPENSES TRANSACTIONS
+// ═══════════════════════════════════════════
+let currentIncomeTab = 'income';
+function switchIncomeTab(tab) {
+  currentIncomeTab = tab;
+  document.querySelectorAll('#page-income .tab').forEach((t, i) => t.classList.toggle('active', i === (tab === 'income' ? 0 : 1)));
+  loadTransactions();
+}
+function loadTransactions() {
+  const from = document.getElementById('inc-from').value || monthStart();
+  const to = document.getElementById('inc-to').value || today();
+  const all = lsGet(LS.transactions);
+  // Add POS sales as income
+  const posSales = posData.invoices.filter(i => i.date >= from && i.date <= to).map(i => ({
+    id: 'pos-' + i.invoice_id, date: i.date, type: 'income',
+    category: 'Sales', description: `Invoice #${String(i.invoice_id).padStart(4,'0')}`,
+    amount: i.total_amount, ref: i.payment_type, fromPOS: true
+  }));
+  // Add POS expenses
+  const posExpenses = posData.expenses.filter(e => e.date >= from && e.date <= to).map(e => ({
+    id: 'posexp-' + e.expense_id, date: e.date, type: 'expense',
+    category: e.category || 'Expense', description: e.description || 'POS Expense',
+    amount: e.amount, ref: 'POS', fromPOS: true
+  }));
+  const filtered = [...all.filter(t => t.date >= from && t.date <= to), ...posSales, ...posExpenses]
+    .filter(t => t.type === currentIncomeTab)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const total = filtered.reduce((a, t) => a + t.amount, 0);
+  const incTotal = [...all.filter(t => t.type === 'income' && t.date >= from && t.date <= to), ...posSales].reduce((a, t) => a + t.amount, 0);
+  const expTotal = [...all.filter(t => t.type === 'expense' && t.date >= from && t.date <= to), ...posExpenses].reduce((a, t) => a + t.amount, 0);
+  document.getElementById('inc-total').textContent = fmt(incTotal);
+  document.getElementById('exp-total').textContent = fmt(expTotal);
+  document.getElementById('net-total').textContent = fmt(incTotal - expTotal);
+  document.getElementById('trans-title').textContent = currentIncomeTab === 'income' ? 'Income Transactions' : 'Expense Transactions';
+  document.getElementById('trans-list').innerHTML = filtered.map(t => `
+    <tr>
+      <td>${t.date}</td>
+      <td>${t.description}</td>
+      <td><span class="badge badge-${t.type === 'income' ? 'green' : 'red'}">${t.category}</span></td>
+      <td><span class="badge badge-${t.fromPOS ? 'blue' : 'gold'}">${t.fromPOS ? 'POS' : 'Manual'}</span></td>
+      <td style="font-weight:700;color:${t.type === 'income' ? 'var(--green)' : 'var(--red)'};">${fmt(t.amount)}</td>
+      <td>${t.fromPOS ? '—' : `<button class="btn btn-danger btn-sm" onclick="deleteTransaction('${t.id}')">✕</button>`}</td>
+    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999;">No transactions</td></tr>';
+}
+function openAddTransModal() {
+  document.getElementById('t-date').value = today();
+  document.getElementById('t-type').value = currentIncomeTab;
+  document.getElementById('t-amount').value = '';
+  document.getElementById('t-desc').value = '';
+  document.getElementById('t-ref').value = '';
+  openModal('modal-transaction');
+}
+function saveTransaction() {
+  const t = {
+    id: Date.now().toString(), date: document.getElementById('t-date').value,
+    type: document.getElementById('t-type').value, category: document.getElementById('t-category').value,
+    description: document.getElementById('t-desc').value, amount: parseFloat(document.getElementById('t-amount').value) || 0,
+    ref: document.getElementById('t-ref').value
+  };
+  if (!t.amount || !t.date) { alert('Fill all required fields'); return; }
+  const all = lsGet(LS.transactions); all.unshift(t); lsSet(LS.transactions, all);
+  closeModal('modal-transaction'); loadTransactions();
+}
+function deleteTransaction(id) {
+  if (!confirm('Delete this transaction?')) return;
+  lsSet(LS.transactions, lsGet(LS.transactions).filter(t => t.id !== id)); loadTransactions();
+}
+
+// ═══════════════════════════════════════════
+// SUPPLIERS
+// ═══════════════════════════════════════════
+let currentSupplierTab = 'list';
+function switchSupplierTab(tab) {
+  currentSupplierTab = tab;
+  document.querySelectorAll('#page-suppliers .tab').forEach((t, i) => t.classList.toggle('active', i === (tab === 'list' ? 0 : 1)));
+  document.getElementById('supplier-table-card').style.display = tab === 'list' ? '' : 'none';
+  document.getElementById('purchase-table-card').style.display = tab === 'purchases' ? '' : 'none';
+  if (tab === 'list') loadSuppliers(); else loadPurchases();
+}
+function loadSuppliers() {
+  const suppliers = lsGet(LS.suppliers);
+  const purchases = lsGet(LS.purchases);
+  document.getElementById('supplier-list').innerHTML = suppliers.map(s => {
+    const total = purchases.filter(p => p.supplier_id === s.id).reduce((a, p) => a + p.amount, 0);
+    const pending = purchases.filter(p => p.supplier_id === s.id && p.status === 'pending').reduce((a, p) => a + p.amount, 0);
+    return `<tr><td><strong>${s.name}</strong><br><small>${s.category}</small></td><td>${s.phone}</td><td>${fmt(total)}</td><td style="color:var(--red);font-weight:700;">${fmt(pending)}</td><td><button class="btn btn-danger btn-sm" onclick="deleteSupplier('${s.id}')">✕</button></td></tr>`;
+  }).join('') || '<tr><td colspan="5" style="text-align:center;padding:20px;color:#999;">No suppliers</td></tr>';
+}
+function loadPurchases() {
+  const purchases = lsGet(LS.purchases);
+  const suppliers = lsGet(LS.suppliers);
+  const supMap = {}; suppliers.forEach(s => supMap[s.id] = s.name);
+  document.getElementById('purchase-list').innerHTML = purchases.map(p => `
+    <tr><td>${p.date}</td><td>${supMap[p.supplier_id] || '-'}</td><td>${p.description}</td><td>${fmt(p.amount)}</td>
+    <td><span class="badge badge-${p.status === 'paid' ? 'green' : p.status === 'pending' ? 'red' : 'gold'}">${p.status}</span></td></tr>
+  `).join('') || '<tr><td colspan="5" style="text-align:center;padding:20px;color:#999;">No purchases</td></tr>';
+}
+function openAddSupplierModal() { document.getElementById('sup-name').value = ''; openModal('modal-supplier'); }
+function saveSupplier() {
+  const s = { id: Date.now().toString(), name: document.getElementById('sup-name').value, phone: document.getElementById('sup-phone').value, email: document.getElementById('sup-email').value, category: document.getElementById('sup-cat').value, address: document.getElementById('sup-addr').value };
+  if (!s.name) { alert('Enter supplier name'); return; }
+  const all = lsGet(LS.suppliers); all.push(s); lsSet(LS.suppliers, all);
+  closeModal('modal-supplier'); loadSuppliers();
+  // Update purchase dropdown
+  refreshSupplierDropdowns();
+}
+function deleteSupplier(id) { if (!confirm('Delete?')) return; lsSet(LS.suppliers, lsGet(LS.suppliers).filter(s => s.id !== id)); loadSuppliers(); }
+function openAddPurchaseModal() {
+  refreshSupplierDropdowns();
+  document.getElementById('pur-date').value = today();
+  openModal('modal-purchase');
+}
+function savePurchase() {
+  const p = { id: Date.now().toString(), date: document.getElementById('pur-date').value, supplier_id: document.getElementById('pur-supplier').value, description: document.getElementById('pur-desc').value, amount: parseFloat(document.getElementById('pur-amount').value) || 0, invoice_ref: document.getElementById('pur-inv').value, status: document.getElementById('pur-status').value };
+  if (!p.amount || !p.date) { alert('Fill required fields'); return; }
+  const all = lsGet(LS.purchases); all.unshift(p); lsSet(LS.purchases, all);
+  closeModal('modal-purchase'); loadPurchases();
+}
+function refreshSupplierDropdowns() {
+  const suppliers = lsGet(LS.suppliers);
+  const opts = suppliers.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  document.getElementById('pur-supplier').innerHTML = '<option value="">Select supplier</option>' + opts;
+}
+
+// ═══════════════════════════════════════════
+// EMPLOYEES & PAYROLL
+// ═══════════════════════════════════════════
+let currentSalaryTab = 'employees';
+function switchSalaryTab(tab) {
+  currentSalaryTab = tab;
+  document.querySelectorAll('#page-salaries .tab').forEach((t, i) => t.classList.toggle('active', i === (tab === 'employees' ? 0 : 1)));
+  document.getElementById('employee-table-card').style.display = tab === 'employees' ? '' : 'none';
+  document.getElementById('payroll-table-card').style.display = tab === 'payroll' ? '' : 'none';
+  if (tab === 'employees') loadEmployees(); else loadPayroll();
+}
+function loadEmployees() {
+  const employees = lsGet(LS.employees);
+  const totalSalary = employees.filter(e => e.status === 'active').reduce((a, e) => a + e.salary, 0);
+  document.getElementById('emp-count').textContent = employees.filter(e => e.status === 'active').length;
+  document.getElementById('salary-total').textContent = fmt(totalSalary);
+  const thisMonth = new Date().toISOString().slice(0, 7);
+  const paidThisMonth = lsGet(LS.payroll).filter(p => p.month === thisMonth).reduce((a, p) => a + p.net_pay, 0);
+  document.getElementById('salary-paid').textContent = fmt(paidThisMonth);
+  document.getElementById('employee-list').innerHTML = employees.map(e => `
+    <tr><td><strong>${e.name}</strong></td><td>${e.position}</td><td>${fmt(e.salary)}</td>
+    <td><span class="badge badge-${e.status === 'active' ? 'green' : 'red'}">${e.status}</span></td>
+    <td><button class="btn btn-danger btn-sm" onclick="deleteEmployee('${e.id}')">✕</button></td></tr>
+  `).join('') || '<tr><td colspan="5" style="text-align:center;padding:20px;color:#999;">No employees</td></tr>';
+}
+function loadPayroll() {
+  const payroll = lsGet(LS.payroll);
+  const empMap = {}; lsGet(LS.employees).forEach(e => empMap[e.id] = e.name);
+  document.getElementById('payroll-list').innerHTML = payroll.map(p => `
+    <tr><td>${p.month}</td><td>${p.emp_id === 'all' ? 'All Employees' : empMap[p.emp_id] || '-'}</td>
+    <td>${fmt(p.basic)}</td><td>${fmt(p.allowance)}</td><td>${fmt(p.deduction)}</td>
+    <td style="font-weight:700;color:var(--green);">${fmt(p.net_pay)}</td>
+    <td><span class="badge badge-green">Paid</span></td></tr>
+  `).join('') || '<tr><td colspan="7" style="text-align:center;padding:20px;color:#999;">No payroll records</td></tr>';
+}
+function openAddEmployeeModal() { document.getElementById('emp-join').value = today(); openModal('modal-employee'); }
+function saveEmployee() {
+  const e = { id: Date.now().toString(), name: document.getElementById('emp-name').value, position: document.getElementById('emp-pos').value, salary: parseFloat(document.getElementById('emp-salary').value) || 0, phone: document.getElementById('emp-phone').value, join_date: document.getElementById('emp-join').value, status: document.getElementById('emp-status').value };
+  if (!e.name) { alert('Enter name'); return; }
+  const all = lsGet(LS.employees); all.push(e); lsSet(LS.employees, all);
+  closeModal('modal-employee'); loadEmployees(); refreshEmployeeDropdowns();
+}
+function deleteEmployee(id) { if (!confirm('Delete?')) return; lsSet(LS.employees, lsGet(LS.employees).filter(e => e.id !== id)); loadEmployees(); }
+function openPayrollModal() {
+  refreshEmployeeDropdowns();
+  document.getElementById('pay-month').value = new Date().toISOString().slice(0, 7);
+  openModal('modal-payroll');
+}
+function savePayroll() {
+  const empId = document.getElementById('pay-emp').value;
+  const emps = empId === 'all' ? lsGet(LS.employees).filter(e => e.status === 'active') : lsGet(LS.employees).filter(e => e.id === empId);
+  const allowance = parseFloat(document.getElementById('pay-allowance').value) || 0;
+  const deduction = parseFloat(document.getElementById('pay-deduction').value) || 0;
+  const month = document.getElementById('pay-month').value;
+  const all = lsGet(LS.payroll);
+  emps.forEach(e => {
+    const net = e.salary + allowance - deduction;
+    all.unshift({ id: Date.now().toString() + e.id, emp_id: e.id, month, basic: e.salary, allowance, deduction, net_pay: net, notes: document.getElementById('pay-notes').value });
+  });
+  lsSet(LS.payroll, all);
+  closeModal('modal-payroll'); loadPayroll(); loadEmployees();
+}
+function refreshEmployeeDropdowns() {
+  const employees = lsGet(LS.employees);
+  const opts = employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+  document.getElementById('pay-emp').innerHTML = '<option value="all">All Employees</option>' + opts;
+}
+
+// ═══════════════════════════════════════════
+// BANK RECONCILIATION
+// ═══════════════════════════════════════════
+function loadBank() {
+  const transactions = lsGet(LS.bank).sort((a, b) => b.date.localeCompare(a.date));
+  let running = 0;
+  const withBalance = [...transactions].reverse().map(t => { running += t.type === 'in' ? t.amount : -t.amount; return { ...t, balance: running }; }).reverse();
+  const totalIn = transactions.filter(t => t.type === 'in').reduce((a, t) => a + t.amount, 0);
+  const totalOut = transactions.filter(t => t.type === 'out').reduce((a, t) => a + t.amount, 0);
+  document.getElementById('bank-in').textContent = fmt(totalIn);
+  document.getElementById('bank-out').textContent = fmt(totalOut);
+  document.getElementById('bank-bal').textContent = fmt(totalIn - totalOut);
+  document.getElementById('bank-list').innerHTML = withBalance.map(t => `
+    <tr><td>${t.date}</td><td>${t.description}</td><td>${t.ref || '-'}</td>
+    <td style="color:var(--green);">${t.type === 'in' ? fmt(t.amount) : '-'}</td>
+    <td style="color:var(--red);">${t.type === 'out' ? fmt(t.amount) : '-'}</td>
+    <td style="font-weight:700;">${fmt(t.balance)}</td>
+    <td><span class="badge badge-${t.reconciled ? 'green' : 'gold'}">${t.reconciled ? 'Done' : 'Pending'}</span></td></tr>
+  `).join('') || '<tr><td colspan="7" style="text-align:center;padding:20px;color:#999;">No transactions</td></tr>';
+}
+function openAddBankTxModal() { document.getElementById('bk-date').value = today(); openModal('modal-bank-tx'); }
+function saveBankTx() {
+  const t = { id: Date.now().toString(), date: document.getElementById('bk-date').value, type: document.getElementById('bk-type').value, amount: parseFloat(document.getElementById('bk-amount').value) || 0, ref: document.getElementById('bk-ref').value, description: document.getElementById('bk-desc').value, reconciled: false };
+  if (!t.amount) { alert('Enter amount'); return; }
+  const all = lsGet(LS.bank); all.unshift(t); lsSet(LS.bank, all);
+  closeModal('modal-bank-tx'); loadBank();
+}
+
+// ═══════════════════════════════════════════
+// CUSTOMER LEDGER
+// ═══════════════════════════════════════════
+function loadLedger() {
+  const custId = document.getElementById('ledger-customer').value;
+  const from = document.getElementById('ledger-from').value || monthStart();
+  const to = document.getElementById('ledger-to').value || today();
+  const custMap = {}; posData.customers.forEach(c => custMap[c.customer_id] = c);
+  let invs = posData.invoices.filter(i => i.date >= from && i.date <= to);
+  if (custId) invs = invs.filter(i => String(i.customer_id) === custId);
+  const totalSales = invs.reduce((a, i) => a + (i.total_amount || 0), 0);
+  const totalCredit = invs.filter(i => i.payment_type === 'credit').reduce((a, i) => a + (i.total_amount || 0), 0);
+  const totalCash = totalSales - totalCredit;
+  document.getElementById('led-sales').textContent = fmt(totalSales);
+  document.getElementById('led-collect').textContent = fmt(totalCash);
+  document.getElementById('led-balance').textContent = fmt(totalCredit);
+  let balance = 0;
+  document.getElementById('ledger-list').innerHTML = invs.sort((a, b) => a.date.localeCompare(b.date)).map(inv => {
+    const isCredit = inv.payment_type === 'credit' || inv.payment_type === 'partial';
+    const creditAmt = inv.payment_type === 'credit' ? inv.total_amount : inv.payment_type === 'partial' ? (inv.total_amount - inv.cash_paid) : 0;
+    const debit = inv.total_amount;
+    const credit = inv.total_amount - creditAmt;
+    balance += creditAmt;
+    const cust = custMap[inv.customer_id];
+    return `<tr>
+      <td>${inv.date}</td><td>${cust?.name || 'Walk-in'}</td>
+      <td>#${String(inv.invoice_id).padStart(4,'0')}</td>
+      <td style="color:var(--navy);font-weight:700;">${fmt(debit)}</td>
+      <td style="color:var(--green);">${fmt(credit)}</td>
+      <td style="font-weight:700;color:${balance > 0 ? 'var(--red)' : 'var(--green)'};">${fmt(balance)}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999;">No data</td></tr>';
+}
+
+// ═══════════════════════════════════════════
+// AGING REPORT
+// ═══════════════════════════════════════════
+function loadAging() {
+  const asOf = document.getElementById('aging-date').value || today();
+  const asOfDate = new Date(asOf);
+  const custMap = {}; posData.customers.forEach(c => custMap[c.customer_id] = c);
+  // Group credit invoices by customer
+  const custAging = {};
+  posData.invoices.filter(i => (i.payment_type === 'credit' || i.payment_type === 'partial') && i.date <= asOf).forEach(inv => {
+    const id = inv.customer_id;
+    if (!custAging[id]) custAging[id] = { current: 0, d31: 0, d61: 0, d90: 0 };
+    const invDate = new Date(inv.date);
+    const days = Math.floor((asOfDate - invDate) / (1000 * 60 * 60 * 24));
+    const amt = inv.payment_type === 'credit' ? inv.total_amount : (inv.total_amount - (inv.cash_paid || 0));
+    if (days <= 30) custAging[id].current += amt;
+    else if (days <= 60) custAging[id].d31 += amt;
+    else if (days <= 90) custAging[id].d61 += amt;
+    else custAging[id].d90 += amt;
+  });
+  let tot0 = 0, tot31 = 0, tot61 = 0, tot90 = 0;
+  const rows = Object.entries(custAging).map(([id, a]) => {
+    const total = a.current + a.d31 + a.d61 + a.d90;
+    tot0 += a.current; tot31 += a.d31; tot61 += a.d61; tot90 += a.d90;
+    const status = a.d90 > 0 ? 'Critical' : a.d61 > 0 ? 'Overdue' : a.d31 > 0 ? 'Due Soon' : 'Current';
+    const badgeColor = a.d90 > 0 ? 'red' : a.d61 > 0 ? 'red' : a.d31 > 0 ? 'gold' : 'green';
+    return `<tr><td><strong>${custMap[id]?.name || 'Walk-in'}</strong></td><td style="font-weight:700;">${fmt(total)}</td><td>${fmt(a.current)}</td><td>${fmt(a.d31)}</td><td>${fmt(a.d61)}</td><td style="color:var(--red);">${fmt(a.d90)}</td><td><span class="badge badge-${badgeColor}">${status}</span></td></tr>`;
+  });
+  document.getElementById('age-0').textContent = fmt(tot0);
+  document.getElementById('age-31').textContent = fmt(tot31);
+  document.getElementById('age-61').textContent = fmt(tot61);
+  document.getElementById('age-90').textContent = fmt(tot90);
+  document.getElementById('aging-list').innerHTML = rows.join('') || '<tr><td colspan="7" style="text-align:center;padding:20px;color:#999;">No outstanding balances</td></tr>';
+}
+
+// ═══════════════════════════════════════════
+// FIXED ASSETS
+// ═══════════════════════════════════════════
+const ASSET_ICONS = { Vehicle:'🚛', Equipment:'🛠️', Furniture:'🪑', Cash:'💰', Other:'📦' };
+
+function calcCurrentValue(asset) {
+  const years = (new Date() - new Date(asset.purchase_date)) / (1000 * 60 * 60 * 24 * 365);
+  const dep = Math.min(100, (asset.dep_rate || 20) * years) / 100;
+  return Math.max(0, asset.purchase_value * (1 - dep));
+}
+
+function calcDepreciation(asset) {
+  const years = (new Date() - new Date(asset.purchase_date)) / (1000 * 60 * 60 * 24 * 365);
+  const thisYear = Math.min(1, years < 1 ? years : 1) * (asset.dep_rate / 100) * asset.purchase_value;
+  const accumulated = (asset.purchase_value - calcCurrentValue(asset));
+  return { thisYear, accumulated };
+}
+
+let currentAssetTab = 'list';
+function switchAssetTab(tab) {
+  currentAssetTab = tab;
+  document.querySelectorAll('#page-assets .tab').forEach((t, i) => t.classList.toggle('active', i === (tab === 'list' ? 0 : 1)));
+  document.getElementById('asset-list-card').style.display = tab === 'list' ? '' : 'none';
+  document.getElementById('depreciation-card').style.display = tab === 'depreciation' ? '' : 'none';
+  if (tab === 'list') loadAssets(); else loadDepreciation();
+}
+
+function loadAssets() {
+  const assets = lsGet('fin_assets');
+  const filter = document.getElementById('asset-filter').value;
+  const filtered = filter ? assets.filter(a => a.category === filter) : assets;
+  // Totals by category
+  const bycat = { Vehicle: 0, Equipment: 0, Furniture: 0, Cash: 0, Other: 0 };
+  assets.forEach(a => { if (a.status === 'active') bycat[a.category] = (bycat[a.category] || 0) + calcCurrentValue(a); });
+  const total = Object.values(bycat).reduce((a, v) => a + v, 0);
+  document.getElementById('ast-vehicle').textContent = fmt(bycat.Vehicle);
+  document.getElementById('ast-equipment').textContent = fmt(bycat.Equipment);
+  document.getElementById('ast-furniture').textContent = fmt(bycat.Furniture);
+  document.getElementById('ast-total').textContent = fmt(total);
+  document.getElementById('asset-list').innerHTML = filtered.map(a => {
+    const current = calcCurrentValue(a);
+    const dep = a.purchase_value - current;
+    return `<tr>
+      <td><strong>${ASSET_ICONS[a.category]||'📦'} ${a.name}</strong><br><small style="color:var(--text2);">${a.notes||''}</small></td>
+      <td><span class="badge badge-blue">${a.category}</span></td>
+      <td>${a.purchase_date}</td>
+      <td>${fmt(a.purchase_value)}</td>
+      <td style="font-weight:700;color:var(--navy);">${fmt(current)}</td>
+      <td style="color:var(--red);">- ${fmt(dep)}</td>
+      <td><span class="badge badge-${a.status === 'active' ? 'green' : 'red'}">${a.status}</span></td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteAsset('${a.id}')">✕</button></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="8" style="text-align:center;padding:20px;color:#999;">No assets added</td></tr>';
+}
+
+function loadDepreciation() {
+  const assets = lsGet('fin_assets').filter(a => a.status === 'active');
+  document.getElementById('depreciation-list').innerHTML = assets.map(a => {
+    const { thisYear, accumulated } = calcDepreciation(a);
+    const nbv = calcCurrentValue(a);
+    return `<tr>
+      <td>${ASSET_ICONS[a.category]||'📦'} ${a.name}</td>
+      <td>${fmt(a.purchase_value)}</td>
+      <td>${a.dep_rate}%</td>
+      <td style="color:var(--red);">${fmt(thisYear)}</td>
+      <td style="color:var(--red);">${fmt(accumulated)}</td>
+      <td style="font-weight:700;color:var(--navy);">${fmt(nbv)}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999;">No active assets</td></tr>';
+}
+
+function openAddAssetModal() {
+  document.getElementById('ast-date').value = today();
+  document.getElementById('ast-name').value = '';
+  document.getElementById('ast-value').value = '';
+  document.getElementById('ast-notes').value = '';
+  openModal('modal-asset');
+}
+
+function saveAsset() {
+  const a = {
+    id: Date.now().toString(),
+    name: document.getElementById('ast-name').value,
+    category: document.getElementById('ast-category').value,
+    purchase_date: document.getElementById('ast-date').value,
+    purchase_value: parseFloat(document.getElementById('ast-value').value) || 0,
+    dep_rate: parseFloat(document.getElementById('ast-dep-rate').value) || 20,
+    status: document.getElementById('ast-status').value,
+    notes: document.getElementById('ast-notes').value
+  };
+  if (!a.name || !a.purchase_value) { alert('Fill required fields'); return; }
+  const all = lsGet('fin_assets'); all.push(a); lsSet('fin_assets', all);
+  closeModal('modal-asset'); loadAssets();
+}
+
+function deleteAsset(id) {
+  if (!confirm('Delete this asset?')) return;
+  lsSet('fin_assets', lsGet('fin_assets').filter(a => a.id !== id)); loadAssets();
+}
+
+// ═══════════════════════════════════════════
+// LIABILITIES
+// ═══════════════════════════════════════════
+let currentLiabTab = 'payables';
+
+function switchLiabTab(tab) {
+  currentLiabTab = tab;
+  document.querySelectorAll('#page-liabilities .tab').forEach((t, i) => t.classList.toggle('active', i === (tab === 'payables' ? 0 : 1)));
+  document.getElementById('payables-card').style.display = tab === 'payables' ? '' : 'none';
+  document.getElementById('drawings-card').style.display = tab === 'drawings' ? '' : 'none';
+  document.getElementById('liab-add-btn').textContent = tab === 'payables' ? '+ Mark as Paid' : '+ Add Drawing';
+  document.getElementById('liab-add-btn').onclick = tab === 'payables' ? null : openAddDrawingModal;
+  if (tab === 'payables') loadPayables(); else loadDrawings();
+}
+
+function loadPayables() {
+  const purchases = lsGet(LS.purchases).filter(p => p.status === 'pending' || p.status === 'partial');
+  const suppliers = lsGet(LS.suppliers);
+  const supMap = {}; suppliers.forEach(s => supMap[s.id] = s.name);
+  const totalPayables = purchases.reduce((a, p) => a + p.amount, 0);
+  const drawings = lsGet('fin_drawings');
+  const totalDrawings = drawings.reduce((a, d) => a + d.amount, 0);
+  document.getElementById('liab-payables').textContent = fmt(totalPayables);
+  document.getElementById('liab-drawings').textContent = fmt(totalDrawings);
+  document.getElementById('liab-total').textContent = fmt(totalPayables + totalDrawings);
+  document.getElementById('payables-list').innerHTML = purchases.map(p => `
+    <tr>
+      <td>${p.date}</td>
+      <td>${supMap[p.supplier_id] || 'Unknown'}</td>
+      <td>${p.description}</td>
+      <td style="font-weight:700;color:var(--red);">${fmt(p.amount)}</td>
+      <td>${p.due_date || '—'}</td>
+      <td><span class="badge badge-${p.status === 'pending' ? 'red' : 'gold'}">${p.status}</span></td>
+      <td><button class="btn btn-success btn-sm" onclick="markPurchasePaid('${p.id}')">✅ Paid</button></td>
+    </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;padding:20px;color:#999;">No pending payables</td></tr>';
+}
+
+function markPurchasePaid(id) {
+  const all = lsGet(LS.purchases);
+  const idx = all.findIndex(p => p.id === id);
+  if (idx >= 0) { all[idx].status = 'paid'; lsSet(LS.purchases, all); }
+  loadPayables();
+}
+
+function loadDrawings() {
+  const drawings = lsGet('fin_drawings');
+  document.getElementById('drawings-list').innerHTML = drawings.map(d => `
+    <tr>
+      <td>${d.date}</td>
+      <td>${d.description}</td>
+      <td style="font-weight:700;color:var(--gold);">${fmt(d.amount)}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteDrawing('${d.id}')">✕</button></td>
+    </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;padding:20px;color:#999;">No drawings recorded</td></tr>';
+}
+
+function openAddDrawingModal() {
+  document.getElementById('drw-date').value = today();
+  document.getElementById('drw-amount').value = '';
+  document.getElementById('drw-desc').value = '';
+  openModal('modal-drawing');
+}
+
+function saveDrawing() {
+  const d = {
+    id: Date.now().toString(),
+    date: document.getElementById('drw-date').value,
+    amount: parseFloat(document.getElementById('drw-amount').value) || 0,
+    description: document.getElementById('drw-desc').value
+  };
+  if (!d.amount) { alert('Enter amount'); return; }
+  const all = lsGet('fin_drawings'); all.unshift(d); lsSet('fin_drawings', all);
+  closeModal('modal-drawing'); loadDrawings();
+}
+
+function deleteDrawing(id) {
+  if (!confirm('Delete?')) return;
+  lsSet('fin_drawings', lsGet('fin_drawings').filter(d => d.id !== id)); loadDrawings();
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+async function init() {
+  // Set default dates
+  document.getElementById('pl-from').value = monthStart();
+  document.getElementById('pl-to').value = today();
+  document.getElementById('bs-date').value = today();
+  document.getElementById('inc-from').value = monthStart();
+  document.getElementById('inc-to').value = today();
+  document.getElementById('aging-date').value = today();
+  document.getElementById('ledger-from').value = monthStart();
+  document.getElementById('ledger-to').value = today();
+  // Sync data
+  await syncData();
+  // Populate customer dropdown
+  const custOpts = posData.customers.map(c => `<option value="${c.customer_id}">${c.name}</option>`).join('');
+  document.getElementById('ledger-customer').innerHTML = '<option value="">All Customers</option>' + custOpts;
+}
+init();
+</script>
+</body>
+</html>
