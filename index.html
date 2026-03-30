@@ -180,6 +180,9 @@ tr:hover td{background:#f8f9ff;}
   <div class="sidebar-footer">
     Connected to POS App<br>Auto-syncs sales data<br>
     <button onclick="changeFinPin()" style="margin-top:8px;background:rgba(255,255,255,.15);color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer;width:100%;">🔑 Change PIN</button>
+    <button onclick="backupFinanceData()" style="margin-top:6px;background:rgba(255,255,255,.15);color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer;width:100%;">💾 Backup Data</button>
+    <button onclick="restoreFinanceData()" style="margin-top:6px;background:rgba(255,255,255,.15);color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer;width:100%;">📂 Restore Backup</button>
+    <button onclick="resetFinanceData()" style="margin-top:6px;background:rgba(220,50,50,.4);color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer;width:100%;">🗑️ Reset All Finance</button>
   </div>
 </div>
 
@@ -900,6 +903,54 @@ tr:hover td{background:#f8f9ff;}
 // ═══════════════════════════════════════════
 const FIN_DEFAULT_PIN = '1234';
 const FIN_MASTER_PIN = '7786';
+
+function backupFinanceData() {
+  const keys = ['fin_transactions','fin_suppliers','fin_purchases','fin_employees','fin_payroll','fin_bank','fin_assets','fin_drawings','fin_purchase_orders','fin_import_costs','fin_products'];
+  const backup = { version: 1, date: new Date().toISOString(), data: {} };
+  keys.forEach(k => { try { backup.data[k] = JSON.parse(localStorage.getItem(k) || '[]'); } catch(e) { backup.data[k] = []; } });
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `fairway-finance-backup-${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 300);
+  showToast('✅ Backup downloaded!');
+}
+
+function restoreFinanceData() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const backup = JSON.parse(ev.target.result);
+        if (!backup.data) { alert('❌ Invalid backup file'); return; }
+        if (!confirm(`Restore backup from ${backup.date?.split('T')[0] || 'unknown date'}?\n\nThis will overwrite current Finance data.`)) return;
+        Object.entries(backup.data).forEach(([k, v]) => localStorage.setItem(k, JSON.stringify(v)));
+        showToast('✅ Data restored! Reloading...');
+        setTimeout(() => location.reload(), 1200);
+      } catch(e) { alert('❌ Failed to restore: ' + e.message); }
+    };
+    reader.readAsText(file);
+  };
+  document.body.appendChild(input); input.click();
+  document.body.removeChild(input);
+}
+
+function resetFinanceData() {
+  const answer = prompt('⚠️ This will DELETE ALL Finance data permanently.\n\nType DELETE to confirm:');
+  if (answer !== 'DELETE') { showToast('Reset cancelled.'); return; }
+  const answer2 = prompt('⚠️ FINAL WARNING — type CONFIRM to proceed:');
+  if (answer2 !== 'CONFIRM') { showToast('Reset cancelled.'); return; }
+  const keys = ['fin_transactions','fin_suppliers','fin_purchases','fin_employees','fin_payroll','fin_bank','fin_assets','fin_drawings','fin_purchase_orders','fin_import_costs','fin_products'];
+  keys.forEach(k => localStorage.removeItem(k));
+  showToast('🗑️ Finance data reset! Reloading...');
+  setTimeout(() => location.reload(), 1200);
+}
 
 function changeFinPin() {
   const current = prompt('Enter current PIN:');
