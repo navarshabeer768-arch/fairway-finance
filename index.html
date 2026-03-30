@@ -1656,30 +1656,57 @@ async function saveProduct() {
   if (!p.name) { alert('Enter product name'); return; }
   const all = lsGet('fin_products');
   if (editId) {
+    // Update in Finance
     const idx = all.findIndex(x => x.id === editId);
     if (idx >= 0) all[idx] = p;
+    // Update in POS Supabase if pos_id exists
+    if (p.pos_id) {
+      try {
+        await sb.from('products').update({
+          name: p.name, category: p.category,
+          selling_price: p.sell_price, cost_price: p.cost_price,
+          unit: p.unit, icon: '📦'
+        }).eq('product_id', p.pos_id);
+        showToast('✅ Product updated in POS!');
+      } catch(e) { console.error('POS update error:', e); }
+    }
   } else {
     all.unshift(p);
-    // Also sync to POS Supabase products table
+    // Insert into POS Supabase with correct fields
     try {
-      const { data, error } = await sb.from('products').insert({
-        name: p.name, category: p.category,
-        selling_price: p.sell_price, cost_price: p.cost_price,
-        icon: '📦', barcode: p.barcode || null
-      }).select();
+      const insertData = {
+        name: p.name,
+        category: p.category,
+        cost_price: p.cost_price,
+        selling_price: p.sell_price,
+        stock_quantity: 0,
+        unit: p.unit || '',
+        low_stock_threshold: 10,
+        icon: '📦',
+        photo: null,
+        created_at: new Date().toISOString()
+      };
+      const { data, error } = await sb.from('products').insert(insertData).select();
+      if (error) throw error;
       if (data && data[0]) {
-        p.pos_id = data[0].product_id;
+        const posProductId = data[0].product_id;
+        p.pos_id = posProductId;
         all[0] = p;
-        // Also create warehouse_stock entry
-        await sb.from('warehouse_stock').insert({ product_id: data[0].product_id, quantity: 0 });
-        await sb.from('inventory').insert({ product_id: data[0].product_id, quantity: 0 });
+        // Create warehouse_stock and inventory entries
+        await sb.from('warehouse_stock').insert({ product_id: posProductId, quantity: 0, last_updated: new Date().toISOString() });
+        await sb.from('inventory').insert({ product_id: posProductId, quantity: 0, last_updated: new Date().toISOString() });
+        showToast(`✅ Product added to POS! Reload POS app to see it.`);
+      } else {
+        showToast('⚠️ Saved locally but POS sync failed');
       }
-    } catch(e) { console.error('POS sync error:', e); }
+    } catch(e) {
+      console.error('POS sync error:', e);
+      showToast('⚠️ Saved locally — POS sync error: ' + e.message);
+    }
   }
   lsSet('fin_products', all);
   closeModal('modal-product');
   loadProducts();
-  showToast(`✅ Product ${editId ? 'updated' : 'added'} and synced to POS!`);
 }
 
 function deleteProduct(id) {
