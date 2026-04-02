@@ -897,6 +897,30 @@ tr:hover td{background:#f8f9ff;}
   </div>
 </div>
 
+<!-- Reset Finance Modal -->
+<div class="modal-overlay" id="reset-finance-modal">
+  <div class="modal">
+    <div class="modal-title" style="color:#c62828;">⚠️ Reset All Finance Data</div>
+    <p style="font-size:.9rem;color:#555;margin:8px 0 16px;">This will permanently delete ALL finance data including transactions, suppliers, employees and settings. This cannot be undone.</p>
+    <div id="fin-reset-step-1">
+      <div style="font-size:.8rem;font-weight:700;color:#666;margin-bottom:5px;">Type <b>DELETE</b> to continue</div>
+      <input id="fin-reset-input-1" class="form-input" placeholder="Type DELETE" autocomplete="off" style="text-transform:uppercase;">
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('reset-finance-modal')">Cancel</button>
+        <button class="btn btn-danger" onclick="finResetStep2()">Continue</button>
+      </div>
+    </div>
+    <div id="fin-reset-step-2" style="display:none;">
+      <div style="font-size:.8rem;font-weight:700;color:#c62828;margin-bottom:5px;">⚠️ FINAL WARNING — Type <b>CONFIRM</b> to delete everything</div>
+      <input id="fin-reset-input-2" class="form-input" placeholder="Type CONFIRM" autocomplete="off" style="text-transform:uppercase;">
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('reset-finance-modal')">Cancel</button>
+        <button class="btn btn-danger" onclick="doFinResetData()">🗑️ DELETE ALL</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ═══════════════════════════════════════════
 // PIN LOGIN
@@ -942,10 +966,25 @@ function restoreFinanceData() {
 }
 
 function resetFinanceData() {
-  const answer = prompt('⚠️ This will DELETE ALL Finance data permanently.\n\nType DELETE to confirm:');
-  if (answer !== 'DELETE') { showToast('Reset cancelled.'); return; }
-  const answer2 = prompt('⚠️ FINAL WARNING — type CONFIRM to proceed:');
-  if (answer2 !== 'CONFIRM') { showToast('Reset cancelled.'); return; }
+  document.getElementById('fin-reset-input-1').value = '';
+  document.getElementById('fin-reset-input-2').value = '';
+  document.getElementById('fin-reset-step-1').style.display = 'block';
+  document.getElementById('fin-reset-step-2').style.display = 'none';
+  openModal('reset-finance-modal');
+}
+
+function finResetStep2() {
+  const val = document.getElementById('fin-reset-input-1').value.trim().toUpperCase();
+  if (val !== 'DELETE') { showToast('⚠️ Type DELETE to continue'); return; }
+  document.getElementById('fin-reset-step-1').style.display = 'none';
+  document.getElementById('fin-reset-step-2').style.display = 'block';
+  document.getElementById('fin-reset-input-2').value = '';
+}
+
+function doFinResetData() {
+  const val = document.getElementById('fin-reset-input-2').value.trim().toUpperCase();
+  if (val !== 'CONFIRM') { showToast('⚠️ Type CONFIRM to delete'); return; }
+  closeModal('reset-finance-modal');
   const keys = ['fin_transactions','fin_suppliers','fin_purchases','fin_employees','fin_payroll','fin_bank','fin_assets','fin_drawings','fin_purchase_orders','fin_import_costs','fin_products'];
   keys.forEach(k => localStorage.removeItem(k));
   showToast('🗑️ Finance data reset! Reloading...');
