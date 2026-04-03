@@ -1917,16 +1917,12 @@ function openAddPurchaseOrderModal() {
   document.getElementById('po-items-tbody').innerHTML = '';
   document.getElementById('po-bill-total').textContent = 'QR 0.00';
   document.getElementById('po-cases-info').style.display = 'none';
-  // Populate product dropdown
+  // Populate product dropdown - exclude deleted products
+  const deletedIds = new Set(lsGet('fin_deleted_pos_ids') || []);
   const finProds = lsGet('fin_products');
   const sel = document.getElementById('po-product-id');
-  if (finProds.length > 0) {
-    sel.innerHTML = '<option value="">Select product...</option>' +
-      finProds.map(p => `<option value="${p.id}" data-name="${p.name}" data-price="${p.cost_price||0}" data-cpb="${p.cases_per_box||1}" data-pos-id="${p.pos_id||p.id}">${p.name} (${p.cases_per_box||1} bags/box)</option>`).join('');
-  } else {
-    sel.innerHTML = '<option value="">Select product...</option>' +
-      posData.products.map(p => `<option value="${p.product_id}" data-name="${p.name}" data-price="${p.cost_price||p.selling_price||0}" data-cpb="${p.cases_per_box||1}" data-pos-id="${p.product_id}">${p.name}</option>`).join('');
-  }
+  sel.innerHTML = '<option value="">Select product...</option>' +
+    finProds.map(p => `<option value="${p.id}" data-name="${p.name}" data-price="${p.cost_price||0}" data-cpb="${p.cases_per_box||1}" data-pos-id="${p.pos_id||p.id}">${p.name} (${p.cases_per_box||1} bags/box)</option>`).join('');
   // Populate supplier dropdown
   const sups = lsGet('fin_suppliers');
   document.getElementById('po-supplier-id').innerHTML = '<option value="">Select supplier...</option>' +
