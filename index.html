@@ -961,7 +961,7 @@ function restoreFinanceData() {
       try {
         const backup = JSON.parse(ev.target.result);
         if (!backup.data) { alert('❌ Invalid backup file'); return; }
-        if (!confirm(`Restore backup from ${backup.date?.split('T')[0] || 'unknown date'}?\n\nThis will overwrite current Finance data.`)) return;
+        if (!safeConfirm(`Restore backup from ${backup.date?.split('T')[0] || 'unknown date'}?\n\nThis will overwrite current Finance data.`)) return;
         Object.entries(backup.data).forEach(([k, v]) => localStorage.setItem(k, JSON.stringify(v)));
         showToast('✅ Data restored! Reloading...');
         setTimeout(() => location.reload(), 1200);
@@ -974,8 +974,8 @@ function restoreFinanceData() {
 }
 
 function resetFinanceData() {
-  if (!confirm('⚠️ Delete ALL Finance data permanently?')) return;
-  if (!confirm('FINAL WARNING — this cannot be undone. Continue?')) return;
+  if (!safeConfirm('⚠️ Delete ALL Finance data permanently?')) return;
+  if (!safeConfirm('FINAL WARNING — this cannot be undone. Continue?')) return;
   const keys = ['fin_transactions','fin_suppliers','fin_purchases','fin_employees','fin_payroll','fin_bank','fin_assets','fin_drawings','fin_purchase_orders','fin_import_costs','fin_products'];
   keys.forEach(k => localStorage.removeItem(k));
   showToast('🗑️ Finance data reset! Reloading...');
@@ -983,13 +983,15 @@ function resetFinanceData() {
 }
 
 function changeFinPin() {
-  const current = prompt('Enter current PIN:');
   const saved = localStorage.getItem('fin_pin') || FIN_DEFAULT_PIN;
-  if (current !== saved && current !== FIN_MASTER_PIN) { alert('❌ Wrong PIN'); return; }
-  const newPin = prompt('Enter new PIN (min 4 digits):');
-  if (!newPin || newPin.length < 4) { alert('PIN must be at least 4 digits'); return; }
+  const current = window.prompt('Enter current PIN:');
+  if (current === null) return;
+  if (current !== saved && current !== FIN_MASTER_PIN) { showToast('❌ Wrong PIN'); return; }
+  const newPin = window.prompt('Enter new PIN (min 4 digits):');
+  if (newPin === null) return;
+  if (!newPin || newPin.length < 4) { showToast('❌ PIN must be at least 4 digits'); return; }
   localStorage.setItem('fin_pin', newPin);
-  alert('✅ PIN changed successfully!');
+  showToast('✅ PIN changed successfully!');
 }
 
 function submitFinPin() {
@@ -1000,8 +1002,8 @@ function submitFinPin() {
   if (entered === savedPin || entered === FIN_MASTER_PIN) {
     document.getElementById('pin-screen').style.display = 'none';
     if (entered === FIN_MASTER_PIN) {
-      const newPin = prompt('Master PIN used. Set new PIN (or cancel to keep default):');
-      if (newPin && newPin.length >= 4) { localStorage.setItem('fin_pin', newPin); alert('New PIN saved!'); }
+      const newPin = window.prompt('Master PIN used. Set new PIN (or cancel to keep default):');
+      if (newPin && newPin.length >= 4) { localStorage.setItem('fin_pin', newPin); showToast('New PIN saved!'); }
     }
   } else {
     document.getElementById('fin-pin-error').textContent = '❌ Wrong PIN. Try again.';
@@ -1035,6 +1037,10 @@ const LS = {
 
 function lsGet(key) { try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { return []; } }
 function lsSet(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
+// Safe confirm that works on iOS PWA (confirm() is blocked in some PWA contexts)
+function safeConfirm(msg) {
+  try { return window.confirm(msg); } catch(e) { return true; }
+}
 
 // ═══════════════════════════════════════════
 // POS SYNC DATA (from Supabase)
@@ -1460,7 +1466,7 @@ function saveTransaction() {
   closeModal('modal-transaction'); loadTransactions();
 }
 function deleteTransaction(id) {
-  if (!confirm('Delete this transaction?')) return;
+  if (!safeConfirm('Delete this transaction?')) return;
   lsSet(LS.transactions, lsGet(LS.transactions).filter(t => t.id !== id)); loadTransactions();
 }
 
@@ -1502,7 +1508,7 @@ function saveSupplier() {
   // Update purchase dropdown
   refreshSupplierDropdowns();
 }
-function deleteSupplier(id) { if (!confirm('Delete?')) return; lsSet(LS.suppliers, lsGet(LS.suppliers).filter(s => s.id !== id)); loadSuppliers(); }
+function deleteSupplier(id) { if (!safeConfirm('Delete?')) return; lsSet(LS.suppliers, lsGet(LS.suppliers).filter(s => s.id !== id)); loadSuppliers(); }
 function openAddPurchaseModal() {
   refreshSupplierDropdowns();
   document.getElementById('pur-date').value = today();
@@ -1562,7 +1568,7 @@ function saveEmployee() {
   const all = lsGet(LS.employees); all.push(e); lsSet(LS.employees, all);
   closeModal('modal-employee'); loadEmployees(); refreshEmployeeDropdowns();
 }
-function deleteEmployee(id) { if (!confirm('Delete?')) return; lsSet(LS.employees, lsGet(LS.employees).filter(e => e.id !== id)); loadEmployees(); }
+function deleteEmployee(id) { if (!safeConfirm('Delete?')) return; lsSet(LS.employees, lsGet(LS.employees).filter(e => e.id !== id)); loadEmployees(); }
 function openPayrollModal() {
   refreshEmployeeDropdowns();
   document.getElementById('pay-month').value = new Date().toISOString().slice(0, 7);
@@ -1698,6 +1704,9 @@ function switchProductTab(tab) {
 
 function loadProducts() {
   const products = lsGet('fin_products');
+  // Refresh stock qtys from latest posData
+  const whMap2 = {}; (posData.warehouse_stock||[]).forEach(w => whMap2[w.product_id] = w.quantity || 0);
+  const trMap2 = {}; (posData.inventory||[]).forEach(t => trMap2[t.product_id] = t.quantity || 0);
   const search = (document.getElementById('prod-search')?.value||'').toLowerCase();
   const filtered = products.filter(p => !search || p.name.toLowerCase().includes(search));
   document.getElementById('prod-count').textContent = products.length;
@@ -1770,8 +1779,11 @@ function editProduct(id) {
 
 async function saveProduct() {
   const editId = document.getElementById('prod-modal-title').dataset.editId;
+  // Get existing product to preserve pos_id and other fields
+  const existingProd = editId ? lsGet('fin_products').find(x => x.id === editId) : null;
   const p = {
     id: editId || Date.now().toString(),
+    pos_id: existingProd?.pos_id || null,  // CRITICAL: preserve pos_id
     name: document.getElementById('prod-name').value.trim(),
     category: document.getElementById('prod-category').value,
     sell_price: parseFloat(document.getElementById('prod-sell-price').value)||0,
@@ -1794,9 +1806,10 @@ async function saveProduct() {
         await sb.from('products').update({
           name: p.name, category: p.category,
           selling_price: p.sell_price, cost_price: p.cost_price,
-          unit: p.unit, icon: '📦'
+          unit: p.unit, cases_per_box: p.cases_per_box, icon: '📦'
         }).eq('product_id', p.pos_id);
         showToast('✅ Product updated in POS!');
+        await syncData();
       } catch(e) { console.error('POS update error:', e); }
     }
   } else {
@@ -1810,6 +1823,7 @@ async function saveProduct() {
         selling_price: p.sell_price,
         stock_quantity: 0,
         unit: p.unit || '',
+        cases_per_box: p.cases_per_box || 1,
         low_stock_threshold: 10,
         icon: '📦',
         photo: null,
@@ -1839,7 +1853,7 @@ async function saveProduct() {
 }
 
 async function deleteProduct(id) {
-  if (!confirm('Delete this product? This will also remove it from POS.')) return;
+  if (!safeConfirm('Delete this product? This will also remove it from POS.')) return;
   const prod = lsGet('fin_products').find(p => p.id === id);
   // Track deleted pos_ids so sync never re-adds them
   if (prod && prod.pos_id) {
@@ -1848,12 +1862,13 @@ async function deleteProduct(id) {
     lsSet('fin_deleted_pos_ids', deleted);
     // Delete from POS Supabase
     try {
-      const pid = parseInt(prod.pos_id);
+      const pid = parseInt(prod.pos_id) || 0;
       await sb.from('invoice_items').delete().eq('product_id', pid);
       await sb.from('inventory').delete().eq('product_id', pid);
       await sb.from('warehouse_stock').delete().eq('product_id', pid);
       await sb.from('products').delete().eq('product_id', pid);
       showToast('✅ Product deleted from POS & Finance');
+    await syncData();
     } catch(e) {
       showToast('⚠️ Deleted locally — POS sync error: ' + e.message);
     }
@@ -2056,7 +2071,7 @@ async function savePurchaseOrder() {
   let warehouseErrors = 0;
   for (const item of poItems) {
     try {
-      const pid = parseInt(item.posProductId);
+      const pid = parseInt(item.posProductId) || 0;
       if (!pid || isNaN(pid)) continue;
       const { data: existing } = await sb.from('warehouse_stock').select('*').eq('product_id', pid);
       if (existing && existing.length > 0) {
@@ -2076,6 +2091,8 @@ async function savePurchaseOrder() {
     showToast(`⚠️ Bill saved but ${warehouseErrors} warehouse sync(s) failed`);
   }
   closeModal('modal-purchase-order');
+  // Refresh posData so warehouse quantities are up to date
+  await syncData();
   loadPurchaseOrders();
 }
 
@@ -2100,13 +2117,28 @@ function markBillPaid(billId) {
   lsSet('fin_purchase_orders', all);
   loadPurchaseOrders();
 }
-function deleteBill(billId) {
-  if (!confirm('Delete this purchase bill?')) return;
-  lsSet('fin_purchase_orders', lsGet('fin_purchase_orders').filter(o => (o.bill_id || o.id) !== billId));
+async function deleteBill(billId) {
+  if (!safeConfirm('Delete this purchase bill? This will reverse warehouse stock.')) return;
+  const all = lsGet('fin_purchase_orders');
+  const billItems = all.filter(o => (o.bill_id || o.id) === billId);
+  // Reverse warehouse stock in Supabase
+  for (const item of billItems) {
+    try {
+      const pid = parseInt(item.pos_product_id || item.product_id) || 0;
+      if (!pid || isNaN(pid)) continue;
+      const { data: existing } = await sb.from('warehouse_stock').select('*').eq('product_id', pid);
+      if (existing && existing.length > 0) {
+        const newQty = Math.max(0, (existing[0].quantity || 0) - (item.total_cases || 0));
+        await sb.from('warehouse_stock').update({ quantity: newQty, last_updated: new Date().toISOString() }).eq('product_id', pid);
+      }
+    } catch(e) { console.error('Warehouse reverse error:', e); }
+  }
+  lsSet('fin_purchase_orders', all.filter(o => (o.bill_id || o.id) !== billId));
+  showToast('✅ Bill deleted & warehouse stock reversed');
   loadPurchaseOrders();
 }
 function deletePO(id) {
-  if (!confirm('Delete this purchase?')) return;
+  if (!safeConfirm('Delete this purchase?')) return;
   lsSet('fin_purchase_orders', lsGet('fin_purchase_orders').filter(o => o.id !== id));
   loadPurchaseOrders();
 }
@@ -2167,7 +2199,7 @@ function saveImportCost() {
 }
 
 function deleteImportCost(id) {
-  if (!confirm('Delete?')) return;
+  if (!safeConfirm('Delete?')) return;
   lsSet('fin_import_costs', lsGet('fin_import_costs').filter(c => c.id !== id));
   loadImportCosts();
 }
@@ -2344,7 +2376,7 @@ function saveAsset() {
 }
 
 function deleteAsset(id) {
-  if (!confirm('Delete this asset?')) return;
+  if (!safeConfirm('Delete this asset?')) return;
   lsSet('fin_assets', lsGet('fin_assets').filter(a => a.id !== id)); loadAssets();
 }
 
@@ -2423,7 +2455,7 @@ function saveDrawing() {
 }
 
 function deleteDrawing(id) {
-  if (!confirm('Delete?')) return;
+  if (!safeConfirm('Delete?')) return;
   lsSet('fin_drawings', lsGet('fin_drawings').filter(d => d.id !== id)); loadDrawings();
 }
 
