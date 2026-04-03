@@ -1960,8 +1960,13 @@ function openAddPurchaseOrderModal() {
   const deletedIds = new Set(lsGet('fin_deleted_pos_ids') || []);
   const finProds = lsGet('fin_products');
   const sel = document.getElementById('po-product-id');
+  const validProds = finProds.filter(p => p.pos_id);
+  const invalidProds = finProds.filter(p => !p.pos_id);
   sel.innerHTML = '<option value="">Select product...</option>' +
-    finProds.map(p => `<option value="${p.id}" data-name="${p.name}" data-price="${p.cost_price||0}" data-cpb="${p.cases_per_box||1}" data-pos-id="${p.pos_id||p.id}">${p.name} (${p.cases_per_box||1} bags/box)</option>`).join('');
+    validProds.map(p => `<option value="${p.id}" data-name="${p.name}" data-price="${p.cost_price||0}" data-cpb="${p.cases_per_box||1}" data-pos-id="${p.pos_id}">${p.name} (${p.cases_per_box||1} bags/box)</option>`).join('');
+  if (invalidProds.length > 0) {
+    sel.innerHTML += `<optgroup label="⚠️ Not synced to POS (can't update warehouse):">${invalidProds.map(p => `<option value="" disabled>${p.name} — sync to POS first</option>`).join('')}</optgroup>`;
+  }
   // Populate supplier dropdown
   const sups = lsGet('fin_suppliers');
   document.getElementById('po-supplier-id').innerHTML = '<option value="">Select supplier...</option>' +
@@ -2080,31 +2085,43 @@ async function savePurchaseOrder() {
     });
   });
   lsSet('fin_purchase_orders', allOrders);
-  // Update warehouse stock for each product
+  // Update warehouse stock for each product — sequential to avoid race conditions
   let warehouseErrors = 0;
+  let warehouseUpdated = 0;
   for (const item of poItems) {
     try {
-      // posProductId could be 'pos-123' format or just '123'
-      const rawId = String(item.posProductId || item.productId || '');
-      const pid = parseInt(rawId.replace('pos-', '')) || 0;
-      if (!pid) { warehouseErrors++; console.warn('Invalid product ID for:', item.productName); continue; }
+      // Extract numeric POS product ID only
+      const rawId = String(item.posProductId || '');
+      const pid = parseInt(rawId.replace(/[^0-9]/g, '')) || 0;
+      if (!pid) {
+        warehouseErrors++;
+        console.warn('No valid POS ID for:', item.productName, '— posProductId was:', item.posProductId);
+        continue;
+      }
+      // Fetch current warehouse stock
       const { data: existing, error: fetchErr } = await sb.from('warehouse_stock').select('*').eq('product_id', pid);
-      if (fetchErr) throw fetchErr;
+      if (fetchErr) throw new Error('Fetch failed: ' + fetchErr.message);
       if (existing && existing.length > 0) {
         const newQty = (existing[0].quantity || 0) + item.totalCases;
-        await sb.from('warehouse_stock').update({ quantity: newQty, last_updated: new Date().toISOString() }).eq('product_id', pid);
+        const { error: updErr } = await sb.from('warehouse_stock').update({ quantity: newQty, last_updated: new Date().toISOString() }).eq('product_id', pid);
+        if (updErr) throw new Error('Update failed: ' + updErr.message);
       } else {
-        await sb.from('warehouse_stock').insert({ product_id: pid, quantity: item.totalCases, last_updated: new Date().toISOString() });
+        const { error: insErr } = await sb.from('warehouse_stock').insert({ product_id: pid, quantity: item.totalCases, last_updated: new Date().toISOString() });
+        if (insErr) throw new Error('Insert failed: ' + insErr.message);
       }
+      warehouseUpdated++;
+      console.log(`✅ Warehouse updated: ${item.productName} +${item.totalCases} bags (PID: ${pid})`);
     } catch(e) {
       warehouseErrors++;
-      console.error('Warehouse sync error for', item.productName, e);
+      console.error('Warehouse sync error for', item.productName, ':', e.message);
     }
   }
   if (warehouseErrors === 0) {
-    showToast(`✅ Bill saved! ${poItems.length} products added to warehouse`);
+    showToast(`✅ Bill saved! ${warehouseUpdated} products updated in warehouse`);
+  } else if (warehouseUpdated > 0) {
+    showToast(`⚠️ Bill saved! ${warehouseUpdated} updated, ${warehouseErrors} failed — check console`);
   } else {
-    showToast(`⚠️ Bill saved but ${warehouseErrors} warehouse sync(s) failed`);
+    showToast(`⚠️ Bill saved but warehouse NOT updated — products may not be synced to POS yet`);
   }
   closeModal('modal-purchase-order');
   // Refresh posData so warehouse quantities are up to date
