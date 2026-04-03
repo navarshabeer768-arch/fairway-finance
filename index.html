@@ -1796,6 +1796,11 @@ async function saveProduct() {
   };
   if (!p.name) { alert('Enter product name'); return; }
   const all = lsGet('fin_products');
+  // Duplicate name check
+  const duplicate = all.find(x =>
+    x.name.trim().toLowerCase() === p.name.toLowerCase() && x.id !== (editId || '')
+  );
+  if (duplicate) { alert('Product "' + p.name + '" already exists!'); return; }
   if (editId) {
     // Update in Finance
     const idx = all.findIndex(x => x.id === editId);
