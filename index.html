@@ -1808,11 +1808,12 @@ async function saveProduct() {
     // Update in POS Supabase if pos_id exists
     if (p.pos_id) {
       try {
-        await sb.from('products').update({
-          name: p.name, category: p.category,
-          selling_price: p.sell_price, cost_price: p.cost_price,
-          unit: p.unit, cases_per_box: p.cases_per_box, icon: '📦'
-        }).eq('product_id', p.pos_id);
+        let updateData = { name: p.name, category: p.category, selling_price: p.sell_price, cost_price: p.cost_price, unit: p.unit, cases_per_box: p.cases_per_box || 1, icon: '📦' };
+        let upRes = await sb.from('products').update(updateData).eq('product_id', p.pos_id);
+        if (upRes.error && upRes.error.message && upRes.error.message.includes('cases_per_box')) {
+          delete updateData.cases_per_box;
+          await sb.from('products').update(updateData).eq('product_id', p.pos_id);
+        }
         showToast('✅ Product updated in POS!');
         await syncData();
       } catch(e) { console.error('POS update error:', e); }
@@ -1821,7 +1822,8 @@ async function saveProduct() {
     all.unshift(p);
     // Insert into POS Supabase with correct fields
     try {
-      const insertData = {
+      // Try with cases_per_box first, fall back without if column missing
+      let insertData = {
         name: p.name,
         category: p.category,
         cost_price: p.cost_price,
@@ -1834,7 +1836,13 @@ async function saveProduct() {
         photo: null,
         created_at: new Date().toISOString()
       };
-      const { data, error } = await sb.from('products').insert(insertData).select();
+      let result = await sb.from('products').insert(insertData).select();
+      if (result.error && result.error.message && result.error.message.includes('cases_per_box')) {
+        // Column doesn't exist - try without it
+        delete insertData.cases_per_box;
+        result = await sb.from('products').insert(insertData).select();
+      }
+      const { data, error } = result;
       if (error) throw error;
       if (data && data[0]) {
         const posProductId = data[0].product_id;
@@ -2076,9 +2084,12 @@ async function savePurchaseOrder() {
   let warehouseErrors = 0;
   for (const item of poItems) {
     try {
-      const pid = parseInt(item.posProductId) || 0;
-      if (!pid || isNaN(pid)) continue;
-      const { data: existing } = await sb.from('warehouse_stock').select('*').eq('product_id', pid);
+      // posProductId could be 'pos-123' format or just '123'
+      const rawId = String(item.posProductId || item.productId || '');
+      const pid = parseInt(rawId.replace('pos-', '')) || 0;
+      if (!pid) { warehouseErrors++; console.warn('Invalid product ID for:', item.productName); continue; }
+      const { data: existing, error: fetchErr } = await sb.from('warehouse_stock').select('*').eq('product_id', pid);
+      if (fetchErr) throw fetchErr;
       if (existing && existing.length > 0) {
         const newQty = (existing[0].quantity || 0) + item.totalCases;
         await sb.from('warehouse_stock').update({ quantity: newQty, last_updated: new Date().toISOString() }).eq('product_id', pid);
