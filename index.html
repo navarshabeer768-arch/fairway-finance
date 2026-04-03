@@ -1071,8 +1071,9 @@ async function syncData() {
     // Sync POS products into fin_products (merge, don't overwrite manual ones)
     const finProds = lsGet('fin_products');
     const finPosIds = new Set(finProds.map(p => p.pos_id).filter(Boolean));
+    const deletedPosIds = new Set(lsGet('fin_deleted_pos_ids') || []);
     const newFromPOS = posData.products
-      .filter(p => !finPosIds.has(p.product_id))
+      .filter(p => !finPosIds.has(p.product_id) && !deletedPosIds.has(p.product_id))
       .map(p => ({
         id: 'pos-' + p.product_id,
         pos_id: p.product_id,
@@ -1839,6 +1840,13 @@ async function saveProduct() {
 
 function deleteProduct(id) {
   if (!confirm('Delete this product?')) return;
+  const prod = lsGet('fin_products').find(p => p.id === id);
+  // Track deleted pos_ids so sync never re-adds them
+  if (prod && prod.pos_id) {
+    const deleted = lsGet('fin_deleted_pos_ids') || [];
+    if (!deleted.includes(prod.pos_id)) deleted.push(prod.pos_id);
+    lsSet('fin_deleted_pos_ids', deleted);
+  }
   lsSet('fin_products', lsGet('fin_products').filter(p => p.id !== id));
   loadProducts();
 }
