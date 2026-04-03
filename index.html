@@ -1838,14 +1838,25 @@ async function saveProduct() {
   loadProducts();
 }
 
-function deleteProduct(id) {
-  if (!confirm('Delete this product?')) return;
+async function deleteProduct(id) {
+  if (!confirm('Delete this product? This will also remove it from POS.')) return;
   const prod = lsGet('fin_products').find(p => p.id === id);
   // Track deleted pos_ids so sync never re-adds them
   if (prod && prod.pos_id) {
     const deleted = lsGet('fin_deleted_pos_ids') || [];
     if (!deleted.includes(prod.pos_id)) deleted.push(prod.pos_id);
     lsSet('fin_deleted_pos_ids', deleted);
+    // Delete from POS Supabase
+    try {
+      const pid = parseInt(prod.pos_id);
+      await sb.from('invoice_items').delete().eq('product_id', pid);
+      await sb.from('inventory').delete().eq('product_id', pid);
+      await sb.from('warehouse_stock').delete().eq('product_id', pid);
+      await sb.from('products').delete().eq('product_id', pid);
+      showToast('✅ Product deleted from POS & Finance');
+    } catch(e) {
+      showToast('⚠️ Deleted locally — POS sync error: ' + e.message);
+    }
   }
   lsSet('fin_products', lsGet('fin_products').filter(p => p.id !== id));
   loadProducts();
